@@ -1,0 +1,48 @@
+{
+  "_comment": "Everything this project installs or relies on, with the exact command to undo it. Paths are relative to the project folder unless absolute.",
+  "installs": [
+    {
+      "name": "npm dependencies (package.json + package-lock.json)",
+      "kind": "npm (project-local)",
+      "source": "https://registry.npmjs.org",
+      "version": "pinned by package-lock.json (15 runtime + 29 dev direct dependencies; licenses MIT / ISC / Apache-2.0 / MPL-2.0 for @axe-core/playwright, dev only)",
+      "installed": "2026-10-29",
+      "path": "node_modules",
+      "method": "npm install (Start-GST-Billing.cmd runs it once on first start)",
+      "uninstall": "Remove-Item -Recurse -Force node_modules"
+    },
+    {
+      "name": "Offline OCR assets (tesseract.js worker + core + English data)",
+      "kind": "copied files",
+      "source": "node_modules/tesseract.js, tesseract.js-core, @tesseract.js-data/eng",
+      "version": "tesseract.js 7.0.0, @tesseract.js-data/eng 1.0.0",
+      "installed": "2026-10-29",
+      "path": "public/ocr (git-ignored)",
+      "method": "postinstall script scripts/copy-ocr-assets.mjs",
+      "uninstall": "Remove-Item -Recurse -Force public\\ocr"
+    },
+    {
+      "name": "npm overrides: minimatch ^11.0.4 (was 10.2.6) and glob ^14.0.3 for workbox-build (was 11.1.0)",
+      "kind": "dependency override",
+      "source": "package.json \"overrides\"",
+      "version": "minimatch 11.0.4, glob 14.0.3",
+      "installed": "2026-11-06",
+      "path": "package.json",
+      "method": "Fixes GHSA-g3hv-75wg-m249 (minimatch ReDoS) and GHSA-3g3m-2fjr-6pw4 (glob) in dev tooling. Verified: lint, typecheck, 173 tests, build (PWA precache 24 entries) and e2e all pass.",
+      "uninstall": "Delete the \"overrides\" block from package.json, then run: npm install"
+    }
+  ],
+  "used_but_not_installed_by_this_project": [
+    { "name": "Node.js", "version": "22.23.3 (needs >= 20.19)", "note": "required to run server.js and to build" },
+    { "name": "Microsoft Edge", "note": "e2e tests run on it locally with PLAYWRIGHT_CHANNEL=msedge" },
+    { "name": "Playwright Chromium chromium-1247", "path": "%LOCALAPPDATA%\\ms-playwright", "note": "already on this PC since 2026-10-04; CI installs its own with npx playwright install --with-deps chromium" },
+    { "name": "gitleaks", "version": "8.30.1", "note": "secret scan" },
+    { "name": "trivy", "version": "0.75.0", "note": "filesystem + lockfile scan" },
+    { "name": "osv-scanner", "version": "2.6.0", "note": "dependency scan (reads osv-scanner.toml)" },
+    { "name": "git", "version": "2.54.0.windows.1" }
+  ],
+  "not_installed_needs_user_approval": [
+    { "name": "Semgrep (SAST)", "install": "pip install semgrep==1.183.0", "uninstall": "pip uninstall -y semgrep", "license": "LGPL-2.1 (CLI); rules p/default" },
+    { "name": "OWASP ZAP (DAST, local run)", "install": "Docker Desktop, then: docker pull ghcr.io/zaproxy/zaproxy:stable", "uninstall": "docker rmi ghcr.io/zaproxy/zaproxy:stable", "note": "the CI job in .github/workflows/security.yml runs ZAP baseline without any local install" }
+  ]
+}

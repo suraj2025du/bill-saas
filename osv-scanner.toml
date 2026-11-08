@@ -1,0 +1,7 @@
+# Documented risk acceptances for OSV-Scanner (details in SECURITY_REPORT.md).
+# Every entry expires; review it again before the date.
+
+[[IgnoredVulns]]
+id = "GHSA-gcqx-w48m-w2h4"
+ignoreUntil = 2027-02-04
+reason = "deepmerge 4.3.1 is the latest release (no fix exists). It is a build-time dependency of workbox-build (@rollup/plugin-node-resolve) that only merges the build's own options; it never sees untrusted input and is not shipped in the app."

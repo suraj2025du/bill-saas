@@ -1,0 +1,115 @@
+{
+  "note": "Payment statuses shown by the app before the batch-02 fixes, for backup-v1-2026-11-07.json.",
+  "documents": [
+    {
+      "kind": "invoice",
+      "id": "doc_fbf777c4f619576fb904",
+      "number": "INV/26-27/0001",
+      "currency": "INR",
+      "status": "PAID",
+      "total": 65183,
+      "paid": 60229,
+      "balance": 0
+    },
+    {
+      "kind": "invoice",
+      "id": "doc_171e23cce68a087e2ee2",
+      "number": "INV/26-27/0002",
+      "currency": "INR",
+      "status": "PARTIAL",
+      "total": 95842,
+      "paid": 75000,
+      "balance": 20842
+    },
+    {
+      "kind": "invoice",
+      "id": "doc_3be4458bf4c7b28a45a9",
+      "number": "INV/26-27/0003",
+      "currency": "INR",
+      "status": "UNPAID",
+      "total": 10030,
+      "paid": 0,
+      "balance": 10030
+    },
+    {
+      "kind": "invoice",
+      "id": "doc_08052be5024829f9b737",
+      "number": "INV/26-27/0004",
+      "currency": "INR",
+      "status": "UNPAID",
+      "total": 118165,
+      "paid": 0,
+      "balance": 118165
+    },
+    {
+      "kind": "invoice",
+      "id": "doc_75b5dd7298e88eb16939",
+      "number": "INV/26-27/0005",
+      "currency": "USD",
+      "status": "PARTIAL",
+      "total": 3900,
+      "paid": 1500,
+      "balance": 2400
+    },
+    {
+      "kind": "invoice",
+      "id": "doc_89e55ed13e8e576bd3dc",
+      "number": "INV/26-27/0006",
+      "currency": "INR",
+      "status": "UNPAID",
+      "total": 57500,
+      "paid": 0,
+      "balance": 57500
+    },
+    {
+      "kind": "invoice",
+      "id": "doc_8c02b0c422f36ff60620",
+      "number": "INV/26-27/0007",
+      "currency": "INR",
+      "status": "PAID",
+      "total": 1172,
+      "paid": 1172,
+      "balance": 0
+    },
+    {
+      "kind": "invoice",
+      "id": "doc_6aae5ba7a7be475af082",
+      "number": "INV/26-27/0008",
+      "currency": "USD",
+      "status": "PAID",
+      "total": 3900,
+      "paid": 3900,
+      "balance": 0
+    },
+    {
+      "kind": "bill",
+      "id": "pur_0ff9b0631326758370c6",
+      "number": "HIL/MH/26/4411",
+      "currency": "INR",
+      "status": "PAID",
+      "total": 167560,
+      "paid": 167560,
+      "balance": 0
+    },
+    {
+      "kind": "bill",
+      "id": "pur_314cbec603a09bae5d2b",
+      "number": "MCC-2291",
+      "currency": "INR",
+      "status": "UNPAID",
+      "total": 54280,
+      "paid": 0,
+      "balance": 54280
+    },
+    {
+      "kind": "bill",
+      "id": "pur_0285b21ff29a07a9a157",
+      "number": "HIL/MH/26/5120",
+      "currency": "INR",
+      "status": "UNPAID",
+      "total": 53910,
+      "paid": 0,
+      "balance": 53910
+    }
+  ]
+}

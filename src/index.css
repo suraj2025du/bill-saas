@@ -1,0 +1,134 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+  body {
+    @apply bg-slate-50 text-slate-900 antialiased;
+  }
+  :focus-visible {
+    outline: 2px solid #6366f1;
+    outline-offset: 2px;
+  }
+  input[type='number']::-webkit-inner-spin-button {
+    opacity: 0.4;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex select-none items-center justify-center gap-1.5 whitespace-nowrap rounded-md border px-3 py-1.5 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .btn-primary {
+    @apply border-brand-600 bg-brand-600 text-white hover:bg-brand-700;
+  }
+  .btn-secondary {
+    @apply border-slate-300 bg-white text-slate-700 hover:bg-slate-50;
+  }
+  .btn-danger {
+    @apply border-red-600 bg-red-600 text-white hover:bg-red-700;
+  }
+  .btn-ghost {
+    @apply border-transparent bg-transparent text-slate-600 hover:bg-slate-100;
+  }
+  .btn-sm {
+    @apply px-2 py-1 text-xs;
+  }
+  .input {
+    @apply block w-full rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 disabled:bg-slate-100 disabled:text-slate-500;
+  }
+  .input-error {
+    @apply border-red-400 focus:border-red-500 focus:ring-red-500;
+  }
+  .label {
+    @apply mb-1 block text-xs font-medium text-slate-600;
+  }
+  .card {
+    @apply rounded-lg border border-slate-200 bg-white shadow-sm;
+  }
+  .data-table {
+    @apply w-full border-collapse text-sm;
+  }
+  .data-table th {
+    @apply sticky top-0 z-[1] border-b border-slate-200 bg-slate-50 px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-500;
+  }
+  .data-table td {
+    @apply border-b border-slate-100 px-3 py-2 align-top;
+  }
+  .data-table tbody tr:hover td {
+    @apply bg-slate-50;
+  }
+  .num {
+    @apply text-right tabular-nums;
+  }
+  .chip {
+    @apply inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium;
+  }
+}
+
+/* ------------------------------------------------------------- print engine */
+
+#print-root {
+  display: none;
+}
+
+.preview-stack > .print-sheet,
+.preview-stack > div > .print-sheet {
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.18);
+  margin-bottom: 12px;
+}
+
+.print-sheet {
+  background: #fff;
+  color: #111827;
+  box-sizing: border-box;
+  position: relative;
+  overflow: hidden;
+}
+
+.print-sheet table {
+  border-collapse: collapse;
+}
+
+.avoid-break,
+.print-sheet tr {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.print-page {
+  break-after: page;
+  page-break-after: always;
+}
+
+.print-page:last-child {
+  break-after: auto;
+  page-break-after: auto;
+}
+
+@media print {
+  html,
+  body {
+    background: #fff !important;
+    height: auto !important;
+  }
+  #root {
+    display: none !important;
+  }
+  #print-root {
+    display: block !important;
+  }
+  .print-sheet {
+    box-shadow: none !important;
+    margin: 0 !important;
+  }
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}

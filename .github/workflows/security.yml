@@ -1,0 +1,88 @@
+# security.yml - SAST (Semgrep) + secrets (Gitleaks) + dependencies (OSV-Scanner, Trivy) + DAST (ZAP baseline).
+# Seeded from the sdlc-scaffold stub. Every action / image is pinned to a commit SHA or digest (verified 2026-11-06).
+# trivy-action is pinned to v0.36.0 (released after the March 2026 tag-hijack incident, CVE-2026-33634); never use @master.
+# Policy: findings of medium severity or higher fail the job (risk acceptances live in osv-scanner.toml + SECURITY_REPORT.md).
+name: security
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: '0 22 * * *' # nightly re-scan, 03:30 IST: new CVEs appear without code changes
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  semgrep:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    container:
+      image: semgrep/semgrep:1.183.0@sha256:2e45517a85e13a9cca14a2a00df6bb48affd66b8ebfae1b0991cd57578362fb0
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: semgrep scan --config p/default --error --exclude public/ocr
+
+  gitleaks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  dependencies:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: OSV-Scanner (reads osv-scanner.toml)
+        uses: google/osv-scanner-action/osv-scanner-action@b1d267aea5211fa648d9d442fa64b90dbdcbdd36 # v2.7.0
+        with:
+          scan-args: |-
+            --recursive
+            ./
+      - name: Trivy (filesystem + lockfile)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          severity: MEDIUM,HIGH,CRITICAL
+          exit-code: '1'
+
+  dast-baseline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Start the app on 127.0.0.1:47371 with an empty data folder
+        run: |
+          GST_DATA_DIR="$RUNNER_TEMP/data" GST_BACKUP_DIR="$RUNNER_TEMP/backups" nohup node server.js > "$RUNNER_TEMP/server.log" 2>&1 &
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:47371/api/health && exit 0; sleep 1; done
+          cat "$RUNNER_TEMP/server.log"; exit 1
+      - name: ZAP baseline (passive)
+        uses: zaproxy/action-baseline@de8ad967d3548d44ef623df22cf95c3b0baf8b25 # v0.15.0
+        with:
+          target: http://127.0.0.1:47371
+          allow_issue_writing: false
+          fail_action: false
+      - name: Fail on medium or high ZAP alerts
+        run: |
+          jq -r '.site[]?.alerts[]? | "\(.riskdesc)  \(.name)"' report_json.json
+          n=$(jq '[.site[]?.alerts[]? | select((.riskcode | tonumber) >= 2)] | length' report_json.json)
+          if [ "$n" -gt 0 ]; then echo "::error::$n ZAP alert(s) of medium risk or higher"; exit 1; fi
