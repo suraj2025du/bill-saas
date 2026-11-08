@@ -1,179 +1,362 @@
-import { Briefcase, Building, Factory, Globe2, Landmark, Laptop, ShoppingBag, Sparkles, Store, Upload, Warehouse } from 'lucide-react';
+import {
+  Building2,
+  CheckCircle2,
+  FileSpreadsheet,
+  Lock,
+  Printer,
+  QrCode,
+  Rocket,
+  ShieldCheck,
+  Sparkles,
+  Store,
+} from 'lucide-react';
 import { useState } from 'react';
-import type { ReactNode } from 'react';
-import { PRESET_LABELS, defaultFeatures, defaultPrintSettings, newBusiness } from '../../core/factories';
-import type { Business, BusinessPreset, Region } from '../../core/model';
+import { defaultFeatures, newBusiness } from '../../core/factories';
+import { SELECTABLE_STATES } from '../../core/gst/states';
+import type { Business, BusinessPreset } from '../../core/model';
 import { makeSnapshot } from '../../core/schema';
+import { registerTenant } from '../../core/tenants';
 import { buildSampleData } from '../../data/seed';
-import { completeSetup, importSnapshot } from '../../store/actions';
+import { completeSetup } from '../../store/actions';
 import { replaceAll } from '../../store/store';
-import { attempt, confirmDialog, toast } from '../../ui/feedback';
-import { pickFile } from '../../ui/files';
-import { Button, cx } from '../../ui/kit';
-import { BusinessBasics } from '../settings/BusinessSettings';
-
-const PRESET_ICONS: Record<BusinessPreset, ReactNode> = {
-  RETAIL: <Store className="h-6 w-6" />,
-  WHOLESALE: <Warehouse className="h-6 w-6" />,
-  FREELANCER: <Laptop className="h-6 w-6" />,
-  AGENCY: <Briefcase className="h-6 w-6" />,
-  MANUFACTURING: <Factory className="h-6 w-6" />,
-  GENERAL: <Building className="h-6 w-6" />,
-};
-
-const PRESET_NOTES: Record<BusinessPreset, string> = {
-  RETAIL: 'Fast counter billing, barcode scan, thermal receipts, stock',
-  WHOLESALE: 'Godowns, batches, dispatch details, Tally-style invoices, TDS/TCS',
-  FREELANCER: 'Service invoices, multi-currency, recurring bills, TDS',
-  AGENCY: 'Retainers, recurring invoices, multi-currency, TDS',
-  MANUFACTURING: 'Inventory, godowns, batches, e-way bills, exports',
-  GENERAL: 'A bit of everything; switch modules on or off later',
-};
-
-function Choice({ active, onClick, icon, title, note }: { active: boolean; onClick: () => void; icon: ReactNode; title: string; note: string }) {
-  return (
-    <button
-      type="button"
-      aria-pressed={active}
-      onClick={onClick}
-      className={cx('flex items-start gap-3 rounded-lg border p-4 text-left transition', active ? 'border-brand-500 bg-brand-50 ring-2 ring-brand-500' : 'border-slate-200 bg-white hover:border-brand-300')}
-    >
-      <span className={cx('rounded-md p-2', active ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-600')}>{icon}</span>
-      <span>
-        <span className="block font-semibold text-slate-800">{title}</span>
-        <span className="block text-sm text-slate-600">{note}</span>
-      </span>
-    </button>
-  );
-}
+import { attempt, toast } from '../../ui/feedback';
+import { Button, Card, Field, Select, TextInput } from '../../ui/kit';
 
 export function SetupWizard() {
-  const [step, setStep] = useState(0);
-  const [region, setRegion] = useState<Region>('INDIA');
-  const [biz, setBiz] = useState<Business>(() => newBusiness({ name: '', countryCode: 'IN', preset: 'GENERAL' }));
+  const [activeTab, setActiveTab] = useState<'TRIAL' | 'DEMO'>('TRIAL');
+
+  // Form State
+  const [shopName, setShopName] = useState('');
+  const [ownerName, setOwnerName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [city, setCity] = useState('');
+  const [stateCode, setStateCode] = useState('09'); // Default: Uttar Pradesh
+  const [gstin, setGstin] = useState('');
+  const [preset, setPreset] = useState<BusinessPreset>('RETAIL');
   const [busy, setBusy] = useState(false);
 
-  const chooseRegion = (r: Region) => {
-    setRegion(r);
-    const countryCode = r === 'INTERNATIONAL' ? (biz.countryCode === 'IN' ? 'AE' : biz.countryCode) : 'IN';
-    setBiz({ ...newBusiness({ name: biz.name, countryCode, preset: biz.preset }), id: biz.id });
-  };
-  const choosePreset = (preset: BusinessPreset) => setBiz((b) => ({ ...b, preset, features: defaultFeatures(preset), print: defaultPrintSettings(preset) }));
+  const handleStartTrial = async (e: React.FormEvent) => {
+    e.preventDefault();
 
-  const finish = async () => {
+    if (!shopName.trim()) {
+      toast.error('Kripya apni Dukaan ya Company ka Naam likhein.');
+      return;
+    }
+    if (!ownerName.trim()) {
+      toast.error('Kripya apna Naam likhein.');
+      return;
+    }
+    if (!phone.trim() || phone.replace(/\D/g, '').length < 10) {
+      toast.error('Kripya 10-digit ka valid WhatsApp / Mobile Number likhein.');
+      return;
+    }
+
     setBusy(true);
-    const features = region === 'BOTH' ? { ...biz.features, multiCurrency: true } : biz.features;
-    await attempt(() => completeSetup({ ...biz, region, features }), `Welcome, ${biz.name}!`);
-    setBusy(false);
-  };
 
-  const loadSample = async () => {
-    if (!(await confirmDialog({ title: 'Explore with sample data?', message: 'A demo business with customers, products, invoices and purchases is created. You can add your own business later from Settings > Businesses, or restore a backup.', confirmLabel: 'Load sample data' }))) return;
-    setBusy(true);
-    await attempt(() => replaceAll(makeSnapshot(buildSampleData())), 'Sample data loaded');
-    setBusy(false);
-  };
-
-  const restore = async () => {
-    const file = await pickFile('application/json,.json');
-    if (!file) return;
     try {
-      const json: unknown = JSON.parse(await file.text());
-      setBusy(true);
-      await attempt(() => importSnapshot(json), 'Backup restored');
+      // 1. Capture customer lead into SaaS Tenant Registry
+      registerTenant({
+        shopName: shopName.trim(),
+        ownerName: ownerName.trim(),
+        phone: phone.trim(),
+        city: city.trim() || 'Local City',
+        stateCode,
+        gstin: gstin.trim().toUpperCase() || undefined,
+      });
+
+      // 2. Initialize the business in the local store
+      const biz: Business = {
+        ...newBusiness({
+          name: shopName.trim(),
+          countryCode: 'IN',
+          preset,
+        }),
+        stateCode,
+        gstin: gstin.trim().toUpperCase() || '',
+        address1: city.trim() ? `${city.trim()}` : 'Main Road',
+        address2: '',
+        city: city.trim() || 'City',
+        pincode: '',
+        phone: phone.trim(),
+        features: defaultFeatures(preset),
+      };
+
+      await attempt(
+        () => completeSetup(biz),
+        `Welcome to BillSaaS, ${ownerName.trim()}! Your 30-Day Free Trial is now active.`
+      );
     } catch {
-      toast.error('This is not a valid backup file.');
+      toast.error('Setup complete karne me dikkat aayi. Kripya dobara try karein.');
     } finally {
       setBusy(false);
     }
   };
 
-  const canNext = step !== 2 || (biz.name.trim().length > 0 && (biz.countryCode !== 'IN' || !!biz.stateCode));
+  const handleLoadDemo = async () => {
+    setBusy(true);
+    try {
+      registerTenant({
+        shopName: 'Demo Supermarket & Retailers',
+        ownerName: 'Guest Explorer',
+        phone: '9999999999',
+        city: 'Delhi',
+        stateCode: '07',
+      });
+      await attempt(
+        () => replaceAll(makeSnapshot(buildSampleData())),
+        'Live Demo Data Loaded! You can now explore all invoices, products, and reports.'
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
-    <div className="min-h-full bg-gradient-to-br from-brand-50 via-white to-slate-100 px-4 py-8">
-      <div className="mx-auto max-w-3xl">
-        <div className="mb-6 flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-600 text-white">
-            <Landmark className="h-6 w-6" />
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-slate-100 flex flex-col justify-between py-8 px-4 sm:px-6">
+      <div className="max-w-4xl mx-auto w-full">
+        {/* Top Branding Header */}
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center gap-2 bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-3 py-1 rounded-full text-xs font-semibold mb-3">
+            <Sparkles className="w-3.5 h-3.5" /> India&apos;s Smart GST Billing &amp; Invoicing Platform
           </div>
-          <div>
-            <h1 className="text-xl font-bold text-slate-900">Free GST Billing</h1>
-            <p className="text-sm text-slate-500">Billing, inventory and accounts. Free, offline, no sign-up.</p>
+          <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white mb-2">
+            BillSaaS <span className="text-indigo-400">Pro</span>
+          </h1>
+          <p className="text-slate-300 max-w-xl mx-auto text-sm sm:text-base">
+            Professional GST Invoices, Thermal Printing, E-Way Bills &amp; Inventory Management for Traders, Retailers &amp; Wholesalers.
+          </p>
+
+          {/* Feature Highlights Pills */}
+          <div className="flex flex-wrap items-center justify-center gap-3 mt-4 text-xs text-slate-300">
+            <span className="flex items-center gap-1 bg-slate-800/80 px-2.5 py-1 rounded-md border border-slate-700">
+              <CheckCircle2 className="w-3.5 h-3.5 text-green-400" /> GST Compliant (GSTR-1/3B)
+            </span>
+            <span className="flex items-center gap-1 bg-slate-800/80 px-2.5 py-1 rounded-md border border-slate-700">
+              <Printer className="w-3.5 h-3.5 text-indigo-400" /> A4 &amp; 2-3&quot; Thermal Print
+            </span>
+            <span className="flex items-center gap-1 bg-slate-800/80 px-2.5 py-1 rounded-md border border-slate-700">
+              <QrCode className="w-3.5 h-3.5 text-amber-400" /> UPI QR on Invoices
+            </span>
+            <span className="flex items-center gap-1 bg-slate-800/80 px-2.5 py-1 rounded-md border border-slate-700">
+              <ShieldCheck className="w-3.5 h-3.5 text-blue-400" /> 100% Secure &amp; Fast
+            </span>
           </div>
         </div>
-        <ol className="mb-6 flex gap-2 text-xs font-medium">
-          {['Region', 'Business type', 'Details', 'Done'].map((s, i) => (
-            <li key={s} className={cx('flex-1 rounded-full px-3 py-1 text-center', i === step ? 'bg-brand-600 text-white' : i < step ? 'bg-brand-100 text-brand-800' : 'bg-slate-200 text-slate-600')}>
-              {i + 1}. {s}
-            </li>
-          ))}
-        </ol>
-        <div className="card p-6">
-          {step === 0 && (
-            <div className="space-y-4">
-              <h2 className="text-lg font-semibold">Where do you do business?</h2>
-              <div className="grid gap-3 sm:grid-cols-3">
-                <Choice active={region === 'INDIA'} onClick={() => chooseRegion('INDIA')} icon={<Landmark className="h-6 w-6" />} title="India only" note="GST invoices, GSTR-1/3B, e-way bills" />
-                <Choice active={region === 'INTERNATIONAL'} onClick={() => chooseRegion('INTERNATIONAL')} icon={<Globe2 className="h-6 w-6" />} title="Outside India" note="VAT / sales tax, local currency" />
-                <Choice active={region === 'BOTH'} onClick={() => chooseRegion('BOTH')} icon={<ShoppingBag className="h-6 w-6" />} title="Both" note="Indian GST plus export billing in 22 currencies" />
+
+        {/* Tab Selector */}
+        <div className="flex justify-center mb-6">
+          <div className="bg-slate-800/90 p-1 rounded-xl border border-slate-700 flex max-w-md w-full">
+            <button
+              type="button"
+              onClick={() => setActiveTab('TRIAL')}
+              className={`flex-1 py-2.5 text-sm font-semibold rounded-lg transition-all flex items-center justify-center gap-2 ${
+                activeTab === 'TRIAL'
+                  ? 'bg-indigo-600 text-white shadow-lg'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <Rocket className="w-4 h-4" /> Start 30-Day Free Trial
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('DEMO')}
+              className={`flex-1 py-2.5 text-sm font-semibold rounded-lg transition-all flex items-center justify-center gap-2 ${
+                activeTab === 'DEMO'
+                  ? 'bg-indigo-600 text-white shadow-lg'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <FileSpreadsheet className="w-4 h-4" /> 1-Click Live Demo
+            </button>
+          </div>
+        </div>
+
+        {/* Tab 1: Free Trial Registration Form */}
+        {activeTab === 'TRIAL' && (
+          <Card className="bg-slate-800/90 border border-slate-700 shadow-2xl p-6 sm:p-8 rounded-2xl">
+            <div className="mb-6 border-b border-slate-700 pb-4">
+              <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                <Store className="w-5 h-5 text-indigo-400" />
+                Dukaan / Business Details
+              </h2>
+              <p className="text-xs text-slate-400 mt-1">
+                Apni dukaan ki details bharein aur turant billing shuru karein. Koi credit card nahi chahiye!
+              </p>
+            </div>
+
+            <form onSubmit={(e) => { void handleStartTrial(e); }} className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Field label="Shop / Business Name (Dukaan ka Naam) *" hint="Jaise: Sharma General Store">
+                  <TextInput
+                    value={shopName}
+                    onValue={setShopName}
+                    placeholder="Enter Shop or Company Name"
+                    className="bg-slate-900 border-slate-700 text-white placeholder-slate-500"
+                    required
+                  />
+                </Field>
+
+                <Field label="Owner / Your Name (Aapka Naam) *" hint="Jaise: Rahul Sharma">
+                  <TextInput
+                    value={ownerName}
+                    onValue={setOwnerName}
+                    placeholder="Enter Your Full Name"
+                    className="bg-slate-900 border-slate-700 text-white placeholder-slate-500"
+                    required
+                  />
+                </Field>
               </div>
-              <div className="flex flex-wrap gap-2 border-t border-slate-100 pt-4">
-                <Button icon={<Sparkles className="h-4 w-4" />} busy={busy} onClick={() => void loadSample()}>
-                  Explore with sample data
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Field label="Mobile / WhatsApp Number *" hint="Updates aur Bill share karne ke liye">
+                  <TextInput
+                    value={phone}
+                    onValue={setPhone}
+                    placeholder="10-digit mobile number"
+                    type="tel"
+                    className="bg-slate-900 border-slate-700 text-white placeholder-slate-500"
+                    required
+                  />
+                </Field>
+
+                <Field label="City / Town (Shehar)">
+                  <TextInput
+                    value={city}
+                    onValue={setCity}
+                    placeholder="e.g. Kanpur, Surat, Delhi"
+                    className="bg-slate-900 border-slate-700 text-white placeholder-slate-500"
+                  />
+                </Field>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Field label="State (GST State Code) *" hint="Tax calculation ke liye zaroori">
+                  <Select
+                    value={stateCode}
+                    onValue={setStateCode}
+                    options={SELECTABLE_STATES.map((s) => ({
+                      value: s.code,
+                      label: `${s.code} - ${s.name}`,
+                    }))}
+                    className="bg-slate-900 border-slate-700 text-white"
+                  />
+                </Field>
+
+                <Field label="GSTIN (Optional)" hint="Agar GST number hai to yahan likhein">
+                  <TextInput
+                    value={gstin}
+                    onValue={(v) => {
+                      const clean = v.toUpperCase();
+                      setGstin(clean);
+                      if (clean.length >= 2) {
+                        const code = clean.slice(0, 2);
+                        if (SELECTABLE_STATES.some((s) => s.code === code)) {
+                          setStateCode(code);
+                        }
+                      }
+                    }}
+                    placeholder="e.g. 09ABCDE1234F1Z5"
+                    className="bg-slate-900 border-slate-700 text-white placeholder-slate-500"
+                  />
+                </Field>
+              </div>
+
+              <div className="pt-2">
+                <Field label="Business Type">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {[
+                      { key: 'RETAIL', label: 'Retail Store' },
+                      { key: 'WHOLESALE', label: 'Wholesale & B2B' },
+                      { key: 'FREELANCER', label: 'Services / Agency' },
+                      { key: 'GENERAL', label: 'General Trader' },
+                    ].map((item) => (
+                      <button
+                        key={item.key}
+                        type="button"
+                        onClick={() => setPreset(item.key as BusinessPreset)}
+                        className={`p-2.5 rounded-lg border text-xs font-semibold text-center transition \${
+                          preset === item.key
+                            ? 'border-indigo-500 bg-indigo-600/30 text-white font-bold'
+                            : 'border-slate-700 bg-slate-900/60 text-slate-300 hover:border-slate-600'
+                        }`}
+                      >
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
+                </Field>
+              </div>
+
+              <div className="pt-4">
+                <Button
+                  type="submit"
+                  disabled={busy}
+                  className="w-full bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-indigo-500/25 flex items-center justify-center gap-2"
+                >
+                  <Rocket className="w-5 h-5" />
+                  {busy ? 'Account Create Ho Raha Hai...' : '🚀 Start 30-Day Free Trial (Instant Access)'}
                 </Button>
-                <Button icon={<Upload className="h-4 w-4" />} busy={busy} onClick={() => void restore()}>
-                  Restore a backup file
-                </Button>
+                <p className="text-center text-xs text-slate-400 mt-2">
+                  Instant Access • 50 Free Invoices • Full Accounting &amp; GST Features Included
+                </p>
+              </div>
+            </form>
+          </Card>
+        )}
+
+        {/* Tab 2: 1-Click Live Demo */}
+        {activeTab === 'DEMO' && (
+          <Card className="bg-slate-800/90 border border-slate-700 shadow-2xl p-6 sm:p-8 rounded-2xl text-center">
+            <div className="w-16 h-16 bg-indigo-500/20 text-indigo-400 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-indigo-500/30">
+              <Building2 className="w-8 h-8" />
+            </div>
+            <h2 className="text-2xl font-bold text-white mb-2">
+              Explore Live Demo Store (Instant Access)
+            </h2>
+            <p className="text-slate-300 text-sm max-w-lg mx-auto mb-6">
+              Bina koi form bhare, turant ready-made data ke sath software chala kar dekhein. Demo store me:
+            </p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-lg mx-auto mb-8 text-left text-xs text-slate-300">
+              <div className="bg-slate-900/80 p-3 rounded-lg border border-slate-700">
+                <span className="font-bold text-white block mb-0.5">🧾 10+ Invoices</span>
+                GST Invoices, Proforma &amp; Delivery Challans
+              </div>
+              <div className="bg-slate-900/80 p-3 rounded-lg border border-slate-700">
+                <span className="font-bold text-white block mb-0.5">📦 15+ Products</span>
+                Items with Barcodes, HSN Codes &amp; Stock
+              </div>
+              <div className="bg-slate-900/80 p-3 rounded-lg border border-slate-700">
+                <span className="font-bold text-white block mb-0.5">👥 10+ Customers</span>
+                Ledgers, Outstanding Balances &amp; GSTIN
               </div>
             </div>
-          )}
-          {step === 1 && (
-            <div className="space-y-4">
-              <h2 className="text-lg font-semibold">What kind of business is it?</h2>
-              <div className="grid gap-3 sm:grid-cols-2">
-                {(Object.keys(PRESET_LABELS) as BusinessPreset[]).map((p) => (
-                  <Choice key={p} active={biz.preset === p} onClick={() => choosePreset(p)} icon={PRESET_ICONS[p]} title={PRESET_LABELS[p]} note={PRESET_NOTES[p]} />
-                ))}
-              </div>
-              <p className="text-xs text-slate-500">This only decides which modules and designs you see first; everything can be changed later in Settings.</p>
-            </div>
-          )}
-          {step === 2 && (
-            <div className="space-y-4">
-              <h2 className="text-lg font-semibold">Your business details</h2>
-              <BusinessBasics b={biz} onChange={setBiz} />
-              <p className="text-xs text-slate-500">Bank accounts, UPI IDs, logo and signature can be added later in Settings &gt; Business profile.</p>
-            </div>
-          )}
-          {step === 3 && (
-            <div className="space-y-3">
-              <h2 className="text-lg font-semibold">All set</h2>
-              <ul className="space-y-1 text-sm text-slate-700">
-                <li>
-                  <b>{biz.name}</b> {biz.gstin && `| ${biz.gstin}`}
-                </li>
-                <li>{PRESET_LABELS[biz.preset]}</li>
-                <li>Invoice design: {biz.print.template.replace('_', ' ').toLowerCase()}</li>
-                <li>Data is saved on this computer. Download a backup from Settings &gt; Backup &amp; restore once in a while.</li>
-              </ul>
-            </div>
-          )}
-          <div className="mt-6 flex justify-between">
-            <Button disabled={step === 0 || busy} onClick={() => setStep((s) => s - 1)}>
-              Back
+
+            <Button
+              disabled={busy}
+              onClick={() => { void handleLoadDemo(); }}
+              className="w-full max-w-md mx-auto bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-emerald-500/25 flex items-center justify-center gap-2"
+            >
+              <Sparkles className="w-5 h-5" />
+              {busy ? 'Demo Data Load Ho Raha Hai...' : '⚡ Explore Live Demo Now (No Sign Up)'}
             </Button>
-            {step < 3 ? (
-              <Button variant="primary" disabled={!canNext} onClick={() => setStep((s) => s + 1)}>
-                Continue
-              </Button>
-            ) : (
-              <Button variant="primary" busy={busy} onClick={() => void finish()}>
-                Start billing
-              </Button>
-            )}
-          </div>
-        </div>
+          </Card>
+        )}
       </div>
+
+      {/* Footer Navigation with Super Admin Portal */}
+      <footer className="mt-8 border-t border-slate-800 pt-4 text-center text-xs text-slate-500 flex flex-wrap items-center justify-between max-w-4xl mx-auto w-full">
+        <div>&copy; {new Date().getFullYear()} BillSaaS Pro. Made for Indian Businesses.</div>
+        <div className="flex items-center gap-4 mt-2 sm:mt-0">
+          <a
+            href="#/settings/super-admin"
+            className="text-indigo-400 hover:text-indigo-300 flex items-center gap-1 font-semibold transition"
+          >
+            <Lock className="w-3.5 h-3.5" />
+            👑 Super Admin Portal
+          </a>
+        </div>
+      </footer>
     </div>
   );
 }

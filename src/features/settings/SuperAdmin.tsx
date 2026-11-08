@@ -10,9 +10,15 @@ import {
   Play,
   Check,
   ShieldAlert,
+  Users,
+  MessageSquare,
+  MapPin,
+  Phone,
+  Store,
 } from 'lucide-react';
 import { useState } from 'react';
 import { validateLicenseKey, generateLicenseKey } from '../../core/licensing';
+import { getTenants, updateTenantPlan } from '../../core/tenants';
 import { updateSettings } from '../../store/actions';
 import { useSettings } from '../../store/hooks';
 import { useStore, commit } from '../../store/store';
@@ -37,6 +43,14 @@ import { putOp } from '../../data/adapter';
 export function SuperAdminPage() {
   const settings = useSettings();
   const data = useStore((s) => s.data);
+
+  const [tenants, setTenants] = useState(() => getTenants());
+
+  const handleUpgradeTenant = (id: string, plan: 'STARTER' | 'ENTERPRISE') => {
+    updateTenantPlan(id, plan);
+    setTenants(getTenants());
+    toast.success(`Client Tenant upgraded to ${plan} plan successfully!`);
+  };
 
   const [inputKey, setInputKey] = useState('');
   const [ownerName, setOwnerName] = useState('');
@@ -454,6 +468,103 @@ export function SuperAdminPage() {
               </button>
             </div>
           )}
+        </div>
+      </Card>
+
+      {/* 3.5 SaaS Registered Tenants & WhatsApp Leads */}
+      <Card className="p-5 border-l-4 border-l-indigo-500">
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
+          <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+            <Users className="h-5 w-5 text-indigo-600" />
+            SaaS Registered Customers &amp; WhatsApp Leads
+          </h3>
+          <Badge tone="blue">{tenants.length} Registered Tenants</Badge>
+        </div>
+        <p className="text-sm text-slate-500 mb-4">
+          Jab bhi koi naya customer live site par trial account register karega, unka shop name, owner name, WhatsApp number aur city details automatically yahan sync ho jayengi. Aap unhe direct message karke sales leads convert kar sakte hain.
+        </p>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm text-slate-600">
+            <thead>
+              <tr className="border-b border-slate-100 font-medium text-slate-400">
+                <th className="py-2">Owner &amp; Shop Name</th>
+                <th className="py-2">WhatsApp Contact</th>
+                <th className="py-2">City &amp; State</th>
+                <th className="py-2 text-center">Invoices</th>
+                <th className="py-2 text-center">Plan Status</th>
+                <th className="py-2 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {tenants.map((tenant) => {
+                const waUrl = `https://wa.me/91${tenant.phone.replace(/\D/g, '')}?text=Hello%20${encodeURIComponent(tenant.ownerName)}%20ji,%20thanks%20for%20registering%20on%20BillSaaS.%20Aapka%20trial%20active%20hai.%20Kya%20aapko%20GST%20billing%20ya%20print%20set%20karne%20me%20koi%20help%20chahiye?`;
+                return (
+                  <tr key={tenant.id} className="hover:bg-slate-50/50">
+                    <td className="py-3">
+                      <span className="block font-semibold text-slate-800">{tenant.ownerName}</span>
+                      <span className="block text-xs text-slate-500 flex items-center gap-1">
+                        <Store className="h-3.5 w-3.5 inline text-slate-400" /> {tenant.shopName}
+                      </span>
+                    </td>
+                    <td className="py-3">
+                      <span className="block font-mono text-slate-700 flex items-center gap-1">
+                        <Phone className="h-3.5 w-3.5 text-slate-400" /> {tenant.phone}
+                      </span>
+                      <a
+                        href={waUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 text-xs text-green-600 font-bold hover:underline mt-0.5"
+                      >
+                        <MessageSquare className="h-3.5 w-3.5" /> Chat on WhatsApp
+                      </a>
+                    </td>
+                    <td className="py-3">
+                      <span className="block text-slate-800 flex items-center gap-1">
+                        <MapPin className="h-3.5 w-3.5 text-slate-400" /> {tenant.city}
+                      </span>
+                      <span className="block text-xs text-slate-500">GST Code: {tenant.stateCode}</span>
+                    </td>
+                    <td className="py-3 text-center font-bold text-slate-800">{tenant.invoicesCount}</td>
+                    <td className="py-3 text-center">
+                      <Badge tone={tenant.plan === 'ENTERPRISE' ? 'green' : tenant.plan === 'STARTER' ? 'blue' : 'amber'}>
+                        {tenant.plan}
+                      </Badge>
+                    </td>
+                    <td className="py-3 text-right">
+                      <div className="flex items-center justify-end gap-1.5">
+                        {tenant.plan === 'TRIAL' && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="text-brand-600 hover:bg-brand-50"
+                            onClick={() => handleUpgradeTenant(tenant.id, 'STARTER')}
+                          >
+                            Activate Starter
+                          </Button>
+                        )}
+                        {tenant.plan !== 'ENTERPRISE' && (
+                          <Button
+                            size="sm"
+                            variant="primary"
+                            onClick={() => handleUpgradeTenant(tenant.id, 'ENTERPRISE')}
+                          >
+                            Go Enterprise
+                          </Button>
+                        )}
+                        {tenant.plan === 'ENTERPRISE' && (
+                          <span className="text-xs text-green-600 font-bold flex items-center gap-0.5">
+                            <Check className="h-3.5 w-3.5" /> Lifetime Active
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       </Card>
 
