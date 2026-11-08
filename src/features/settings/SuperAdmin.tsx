@@ -15,10 +15,11 @@ import {
   MapPin,
   Phone,
   Store,
+  Globe,
 } from 'lucide-react';
 import { useState } from 'react';
 import { validateLicenseKey, generateLicenseKey } from '../../core/licensing';
-import { getTenants, updateTenantPlan } from '../../core/tenants';
+import { getTenants, updateTenantPlan, getLeadWebhookUrl, setLeadWebhookUrl, dispatchLeadNotification } from '../../core/tenants';
 import { updateSettings } from '../../store/actions';
 import { useSettings } from '../../store/hooks';
 import { useStore, commit } from '../../store/store';
@@ -45,11 +46,48 @@ export function SuperAdminPage() {
   const data = useStore((s) => s.data);
 
   const [tenants, setTenants] = useState(() => getTenants());
+  const [webhookUrl, setWebhookUrlInput] = useState(() => getLeadWebhookUrl());
+  const [testingWebhook, setTestingWebhook] = useState(false);
 
   const handleUpgradeTenant = (id: string, plan: 'STARTER' | 'ENTERPRISE') => {
     updateTenantPlan(id, plan);
     setTenants(getTenants());
-    toast.success(`Client Tenant upgraded to ${plan} plan successfully!`);
+    toast.success(`Tenant upgraded to ${plan} successfully!`);
+  };
+
+  const handleSaveWebhook = () => {
+    setLeadWebhookUrl(webhookUrl);
+    toast.success('SaaS Lead Sync Webhook URL updated successfully! Naye registrations ab directly is URL par post honge.');
+  };
+
+  const handleTestWebhook = async () => {
+    if (!webhookUrl.trim()) {
+      toast.error('Kripya pehle ek Webhook URL dakhil karein.');
+      return;
+    }
+    setTestingWebhook(true);
+    setLeadWebhookUrl(webhookUrl);
+    
+    const testTenant = {
+      id: 'tenant_test',
+      shopName: 'Test Dukaan India',
+      ownerName: 'Suraj Admin Test',
+      phone: '9999999999',
+      city: 'Delhi',
+      stateCode: '07',
+      plan: 'TRIAL' as const,
+      invoicesCount: 1,
+      registeredAt: new Date().toISOString(),
+      lastActiveAt: new Date().toISOString(),
+    };
+    
+    const success = await dispatchLeadNotification(testTenant);
+    setTestingWebhook(false);
+    if (success) {
+      toast.success('Test notification sent! Apne webhook logs (Discord, Telegram or Zapier) check karein.');
+    } else {
+      toast.error('Test dispatch failed. Check network or URL CORS parameters.');
+    }
   };
 
   const [inputKey, setInputKey] = useState('');
@@ -565,6 +603,52 @@ export function SuperAdminPage() {
               })}
             </tbody>
           </table>
+        </div>
+      </Card>
+
+      {/* 4. Real-Time SaaS Lead Webhook & Mobile Alerts */}
+      <Card className="p-5 border-l-4 border-l-brand-500 bg-gradient-to-r from-slate-900 to-slate-800 text-white">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+          <div>
+            <h3 className="text-lg font-bold text-white flex items-center gap-2">
+              <Globe className="h-5 w-5 text-brand-400" />
+              Real-Time Lead Webhook & Mobile Alerts
+            </h3>
+            <p className="text-sm text-slate-300 mt-1">
+              Jab bhi koi naya customer live site par register karega, unki details (Shop, Owner, WhatsApp, City) directly aapke Webhook URL (Discord, Telegram Bot, Zapier, n8n ya Make) par post ho jayengi!
+            </p>
+          </div>
+          <Badge tone="blue">Cloud CRM Sync</Badge>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-4 items-end mt-4">
+          <div className="sm:col-span-3">
+            <Field label={<span className="text-slate-200">Webhook POST Endpoint URL</span>}>
+              <TextInput
+                placeholder="https://discord.com/api/webhooks/... or https://hook.eu2.make.com/..."
+                value={webhookUrl}
+                onValue={(v) => setWebhookUrlInput(v)}
+                className="bg-slate-800 border-slate-700 text-white placeholder-slate-400 font-mono text-sm"
+              />
+            </Field>
+          </div>
+          <div className="flex gap-2">
+            <Button
+              variant="primary"
+              className="w-full"
+              onClick={handleSaveWebhook}
+            >
+              Save URL
+            </Button>
+            <Button
+              variant="ghost"
+              disabled={testingWebhook}
+              className="bg-slate-700 hover:bg-slate-600 text-slate-200 whitespace-nowrap"
+              onClick={() => { void handleTestWebhook(); }}
+            >
+              {testingWebhook ? 'Testing...' : 'Test Ping'}
+            </Button>
+          </div>
         </div>
       </Card>
 

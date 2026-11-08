@@ -71,6 +71,7 @@ export function registerTenant(input: {
 
   tenants.unshift(newTenant);
   saveTenants(tenants);
+  void dispatchLeadNotification(newTenant);
   return newTenant;
 }
 
@@ -123,4 +124,56 @@ function getDefaultTenants(): SaasTenant[] {
       lastActiveAt: new Date().toISOString(),
     },
   ];
+}
+
+const WEBHOOK_KEY = 'bill_saas_lead_webhook_url';
+
+export function getLeadWebhookUrl(): string {
+  try {
+    return localStorage.getItem(WEBHOOK_KEY) || '';
+  } catch {
+    return '';
+  }
+}
+
+export function setLeadWebhookUrl(url: string): void {
+  try {
+    localStorage.setItem(WEBHOOK_KEY, url.trim());
+  } catch {
+    // ignore
+  }
+}
+
+export async function dispatchLeadNotification(tenant: SaasTenant): Promise<boolean> {
+  const webhookUrl = getLeadWebhookUrl();
+  if (!webhookUrl) return false;
+
+  try {
+    const payload = {
+      event: 'NEW_SAAS_TRIAL_SIGNUP',
+      timestamp: new Date().toISOString(),
+      tenant: {
+        shopName: tenant.shopName,
+        ownerName: tenant.ownerName,
+        phone: tenant.phone,
+        city: tenant.city,
+        stateCode: tenant.stateCode,
+        gstin: tenant.gstin || 'N/A',
+        plan: tenant.plan,
+        registeredAt: tenant.registeredAt,
+      },
+      text: `🚀 *New BillSaaS Signup Notification!*\n\n🏪 *Shop Name:* ${tenant.shopName}\n👤 *Owner Name:* ${tenant.ownerName}\n📱 *WhatsApp Contact:* +91 ${tenant.phone}\n📍 *City:* ${tenant.city} (GST Code: ${tenant.stateCode})\n⭐ *Plan Level:* ${tenant.plan}\n📅 *Registered At:* ${new Date(tenant.registeredAt).toLocaleString()}`,
+    };
+
+    await fetch(webhookUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      mode: 'no-cors',
+    });
+    return true;
+  } catch (err) {
+    console.error('[webhook] Lead notification failed:', err);
+    return false;
+  }
 }

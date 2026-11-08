@@ -1,4 +1,4 @@
-import { Ban, Copy, FileDown, FileJson, Pencil, Printer, Receipt, Repeat, Share2, Trash2, Undo2 } from 'lucide-react';
+import { Ban, Copy, FileDown, FileJson, Pencil, Printer, Receipt, Repeat, Share2, Trash2, Undo2, MessageSquare } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { paymentFx } from '../../core/accounting/postings';
@@ -308,6 +308,20 @@ export function DocView() {
             </Button>
             <Button icon={<Share2 className="h-4 w-4" />} onClick={() => void share()}>
               Share
+            </Button>
+            <Button
+              className="bg-green-600 hover:bg-green-700 text-white font-bold"
+              icon={<MessageSquare className="h-4 w-4" />}
+              onClick={() => {
+                const phone = doc.party.phone?.replace(/\D/g, '') || '';
+                const text = `Namaste ${doc.party.name || 'ji'},\n\nAapka ${meta.label} No: ${doc.number} dated ${fdate(doc.date)} from ${biz.name} ready hai.\n💰 Total Amount: ${money(doc.totals.net, doc.currency)}${summary.balance > 0 ? `\n⚠️ Balance Due: ${money(summary.balance, doc.currency)}` : '\n✅ Status: Paid in Full'}${view.upi ? `\n\n📲 Pay via UPI: ${view.upi.vpa}` : ''}\n\nDhanyawad! - ${biz.name}`;
+                const waUrl = phone.length >= 10
+                  ? `https://wa.me/91${phone.slice(-10)}?text=${encodeURIComponent(text)}`
+                  : `https://wa.me/?text=${encodeURIComponent(text)}`;
+                window.open(waUrl, '_blank');
+              }}
+            >
+              WhatsApp
             </Button>
             {doc.status !== 'CANCELLED' && (
               <Button icon={<Pencil className="h-4 w-4" />} onClick={() => navigate(`/sales/${doc.id}/edit`)}>
