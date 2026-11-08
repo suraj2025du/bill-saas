@@ -1,0 +1,45 @@
+# nightly.yml - heal:nightly: every night re-run all gates (lint, types, tests with the 80%
+# coverage gate, build, Playwright e2e, npm audit) and open a fix task (issue) when one fails.
+# The security scanners re-run nightly in security.yml.
+name: nightly
+on:
+  schedule:
+    - cron: '30 21 * * *' # 03:00 IST
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  heal:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run heal:nightly
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: ${{ !cancelled() }}
+        with:
+          name: nightly-report
+          path: security-reports/
+          retention-days: 30
+      - name: Open a fix task
+        if: ${{ failure() }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          report=$(ls security-reports/nightly-*.md 2>/dev/null | tail -n 1)
+          title="Nightly check failed on $(date -u +%F)"
+          if gh issue list --state open --search "\"$title\" in:title" --json number --jq '.[0].number' | grep -q .; then
+            echo "An issue for today already exists."; exit 0
+          fi
+          gh issue create --title "$title" --body-file "${report:-/dev/null}" --label bug || gh issue create --title "$title" --body-file "${report:-/dev/null}"

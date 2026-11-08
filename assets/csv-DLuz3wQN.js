@@ -1,0 +1,2 @@
+var e=/^[=+\-@\t\r]/;function t(t){if(t==null)return``;if(typeof t==`number`)return Number.isFinite(t)?String(t):``;if(typeof t==`boolean`)return t?`Yes`:`No`;let n=e.test(t)?`'${t}`:t;return/[",\r\n]/.test(n)?`"${n.replace(/"/g,`""`)}"`:n}function n(e,n=!0){let r=e.map(e=>e.map(t).join(`,`)).join(`\r
+`);return(n?`﻿`:``)+r}function r(e,t){return[t.map(e=>e.header),...e.map(e=>t.map(t=>t.value(e)))]}function i(e,t){return n(r(e,t))}export{n,i as t};
