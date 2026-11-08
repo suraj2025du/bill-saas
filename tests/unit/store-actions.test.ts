@@ -37,6 +37,8 @@ describe('Batch 08: Store Actions Tests (CR Y4, Y5, Y6; CO 14, 15, 27)', () => {
     // Enable resetEachFY but disable includeFY on TAX_INVOICE
     business.series.TAX_INVOICE = {
       prefix: 'INV/',
+      suffix: '',
+      fy: '',
       padding: 4,
       resetEachFY: true,
       includeFY: false,
@@ -44,7 +46,7 @@ describe('Batch 08: Store Actions Tests (CR Y4, Y5, Y6; CO 14, 15, 27)', () => {
     };
 
     // Add an invoice from the previous financial year
-    const invoiceFY25 = {
+    const invoiceFY25: SalesDocument = {
       ...data.invoices[0],
       id: 'inv-prev-fy',
       date: '2025-05-10',
@@ -58,7 +60,7 @@ describe('Batch 08: Store Actions Tests (CR Y4, Y5, Y6; CO 14, 15, 27)', () => {
     data.invoices.push(invoiceFY25);
 
     // Create a new invoice in FY 2026-27
-    const invoiceFY26 = {
+    const invoiceFY26: SalesDocument = {
       ...data.invoices[0],
       id: 'inv-new-fy',
       date: '2026-05-10',
@@ -164,9 +166,10 @@ describe('Batch 08: Store Actions Tests (CR Y4, Y5, Y6; CO 14, 15, 27)', () => {
   });
 
   it('Y5: clearing transport and dispatch details during copy, duplicate and conversion', () => {
-    const source = {
+    const source: SalesDocument = {
       ...data.invoices[0],
       dispatch: {
+        ...data.invoices[0].dispatch,
         buyerOrderNo: 'PO-1234',
         vehicleNo: 'KA-01-1234',
         ewayBillNo: '123456789012',
