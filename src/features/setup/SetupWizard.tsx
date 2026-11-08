@@ -73,6 +73,7 @@ export function SetupWizard() {
         }),
         stateCode,
         gstin: gstin.trim().toUpperCase() || '',
+        gstRegistration: gstin.trim() ? 'REGULAR' : 'UNREGISTERED',
         address1: city.trim() ? `${city.trim()}` : 'Main Road',
         address2: '',
         city: city.trim() || 'City',
