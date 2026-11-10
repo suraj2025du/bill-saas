@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BillSaaS (Free GST Billing) - SaaS &amp; Boards Architecture</title>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'JetBrains Mono', monospace;
+      background: #020617;
+      min-height: 100vh;
+      padding: 2rem;
+      color: white;
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    
+    .header {
+      margin-bottom: 2rem;
+    }
+    
+    .header-row {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 0.5rem;
+    }
+    
+    .pulse-dot {
+      width: 12px;
+      height: 12px;
+      background: #10b981;
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+    
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.2); opacity: 0.6; }
+    }
+    
+    h1 {
+      font-size: 1.6rem;
+      font-weight: 700;
+      letter-spacing: -0.025em;
+      color: #f8fafc;
+    }
+    
+    .subtitle {
+      color: #94a3b8;
+      font-size: 0.875rem;
+      margin-left: 1.75rem;
+    }
+    
+    .diagram-container {
+      background: rgba(15, 23, 42, 0.7);
+      border-radius: 1rem;
+      border: 1px solid #1e293b;
+      padding: 1.5rem;
+      overflow-x: auto;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    }
+    
+    svg {
+      width: 100%;
+      min-width: 1000px;
+      display: block;
+    }
+    
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.25rem;
+      margin-top: 2rem;
+    }
+    
+    .card {
+      background: rgba(15, 23, 42, 0.6);
+      border-radius: 0.75rem;
+      border: 1px solid #1e293b;
+      padding: 1.25rem;
+      transition: transform 0.2s, border-color 0.2s;
+    }
+    
+    .card:hover {
+      transform: translateY(-2px);
+      border-color: #334155;
+    }
+    
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0.75rem;
+    }
+    
+    .card-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+    
+    .card-dot.cyan { background: #22d3ee; }
+    .card-dot.emerald { background: #34d399; }
+    .card-dot.violet { background: #a78bfa; }
+    .card-dot.amber { background: #fbbf24; }
+    .card-dot.rose { background: #fb7185; }
+    
+    .card h3 {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: #f1f5f9;
+    }
+    
+    .card ul {
+      list-style: none;
+      color: #94a3b8;
+      font-size: 0.75rem;
+    }
+    
+    .card li {
+      margin-bottom: 0.5rem;
+      line-height: 1.4;
+    }
+    
+    .footer {
+      text-align: center;
+      margin-top: 2rem;
+      color: #475569;
+      font-size: 0.75rem;
+      border-top: 1px solid #1e293b;
+      padding-top: 1.5rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <div class="header">
+      <div class="header-row">
+        <div class="pulse-dot"></div>
+        <h1>BillSaaS (Free GST Billing) - SaaS &amp; Boards Architecture</h1>
+      </div>
+      <p class="subtitle">100% Secure, Local-First Multi-Workspace Architecture &amp; Auto-Reactivation UPI Pipeline</p>
+    </div>
+
+    <!-- Main Diagram -->
+    <div class="diagram-container">
+      <svg viewBox="0 0 1100 700">
+        <!-- Definitions -->
+        <defs>
+          <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#64748b" />
+          </marker>
+          <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+            <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#111827" stroke-width="0.5"/>
+          </pattern>
+        </defs>
+
+        <!-- Background Grid -->
+        <rect width="100%" height="100%" fill="url(#grid)" />
+
+        <!-- Region/SaaS Boundaries (Vercel Live Cloud CDN) -->
+        <rect x="20" y="20" width="1060" height="660" rx="12" fill="rgba(34, 211, 238, 0.01)" stroke="#1e293b" stroke-width="1.5" />
+        <text x="32" y="38" fill="#475569" font-size="10" font-weight="700">Vercel Live Production Sandbox Container</text>
+
+        <!-- ================= FRONTEND LAYER ================= -->
+        <!-- User Entry -->
+        <rect x="50" y="280" width="110" height="60" rx="6" fill="rgba(30, 41, 59, 0.5)" stroke="#94a3b8" stroke-width="1.5"/>
+        <text x="105" y="305" fill="white" font-size="11" font-weight="600" text-anchor="middle">Indian Merchant</text>
+        <text x="105" y="321" fill="#94a3b8" font-size="9" text-anchor="middle">Browser / PC / Tab</text>
+
+        <!-- Main Shell / App Router Layout -->
+        <rect x="210" y="100" width="220" height="440" rx="10" fill="rgba(8, 51, 68, 0.4)" stroke="#22d3ee" stroke-width="1.5"/>
+        <text x="320" y="125" fill="white" font-size="13" font-weight="700" text-anchor="middle">SPA Client Layout.tsx</text>
+        <text x="320" y="142" fill="#22d3ee" font-size="9" text-anchor="middle">Zustand Store Engine</text>
+
+        <!-- 5 Interconnected Boards/Pages Inside Client -->
+        <!-- Board 1 -->
+        <rect x="230" y="170" width="180" height="55" rx="6" fill="rgba(15, 23, 42, 0.6)" stroke="#06b6d4" stroke-width="1"/>
+        <text x="320" y="190" fill="white" font-size="10" font-weight="600" text-anchor="middle">Board 1: Invoicing &amp; POS</text>
+        <text x="320" y="206" fill="#94a3b8" font-size="8" text-anchor="middle">Sales, A4 PDF &amp; Thermal Prints</text>
+
+        <!-- Board 2 -->
+        <rect x="230" y="240" width="180" height="55" rx="6" fill="rgba(15, 23, 42, 0.6)" stroke="#06b6d4" stroke-width="1"/>
+        <text x="320" y="260" fill="white" font-size="10" font-weight="600" text-anchor="middle">Board 2: Stock &amp; Inventory</text>
+        <text x="320" y="276" fill="#94a3b8" font-size="8" text-anchor="middle">Product catalog &amp; Low Stock Alert</text>
+
+        <!-- Board 3 -->
+        <rect x="230" y="310" width="180" height="55" rx="6" fill="rgba(15, 23, 42, 0.6)" stroke="#06b6d4" stroke-width="1"/>
+        <text x="320" y="330" fill="white" font-size="10" font-weight="600" text-anchor="middle">Board 3: GST Tax Return</text>
+        <text x="320" y="346" fill="#94a3b8" font-size="8" text-anchor="middle">PeriodPicker, GSTR-1 &amp; 3B filing</text>
+
+        <!-- Board 4 -->
+        <rect x="230" y="380" width="180" height="55" rx="6" fill="rgba(15, 23, 42, 0.6)" stroke="#fbbf24" stroke-width="1"/>
+        <text x="320" y="400" fill="white" font-size="10" font-weight="600" text-anchor="middle">Board 4: Self-Serve Checkout</text>
+        <text x="320" y="416" fill="#fbbf24" font-size="8" text-anchor="middle">Dynamic UPI QR + UTR verification</text>
+
+        <!-- Board 5 -->
+        <rect x="230" y="450" width="180" height="55" rx="6" fill="rgba(15, 23, 42, 0.6)" stroke="#06b6d4" stroke-width="1"/>
+        <text x="320" y="470" fill="white" font-size="10" font-weight="600" text-anchor="middle">Board 5: Daily Price Check</text>
+        <text x="320" y="486" fill="#94a3b8" font-size="8" text-anchor="middle">Mustard, Soya Rates &amp; Weather API</text>
+
+
+        <!-- ================= SaaS LOCK SECURITY LAYER ================= -->
+        <!-- Software Lock Screen Modal -->
+        <rect x="490" y="100" width="180" height="150" rx="8" fill="rgba(136, 19, 55, 0.3)" stroke="#fb7185" stroke-width="1.5"/>
+        <text x="580" y="125" fill="white" font-size="11" font-weight="700" text-anchor="middle">SoftwareLockModal.tsx</text>
+        <text x="580" y="145" fill="#fb7185" font-size="9" text-anchor="middle">Strict Lock Engine</text>
+        <text x="580" y="165" fill="#e2e8f0" font-size="8" text-anchor="middle">• Expiry Auto-Lock</text>
+        <text x="580" y="179" fill="#e2e8f0" font-size="8" text-anchor="middle">• Invoice Limit Lock</text>
+        <text x="580" y="193" fill="#e2e8f0" font-size="8" text-anchor="middle">• Manual Admin Block</text>
+        <text x="580" y="215" fill="#f43f5e" font-size="8" font-weight="700" text-anchor="middle">System Protected</text>
+
+
+        <!-- ================= LICENSING CORE ENGINE ================= -->
+        <!-- licensings.ts Cryptographic Validation System -->
+        <rect x="490" y="310" width="180" height="180" rx="8" fill="rgba(136, 19, 55, 0.4)" stroke="#fb7185" stroke-width="1.5" />
+        <text x="580" y="335" fill="white" font-size="12" font-weight="700" text-anchor="middle">licensing.ts (Security)</text>
+        <text x="580" y="355" fill="#fb7185" font-size="9" text-anchor="middle">Verification Core</text>
+        <text x="580" y="375" fill="#e2e8f0" font-size="8" text-anchor="middle">• Mod-31 Signature Key</text>
+        <text x="580" y="389" fill="#e2e8f0" font-size="8" text-anchor="middle">• Anti-Clock Tamper Adapter</text>
+        <text x="580" y="403" fill="#e2e8f0" font-size="8" text-anchor="middle">• TRIAL / MONTHLY bounds</text>
+        <text x="580" y="417" fill="#e2e8f0" font-size="8" text-anchor="middle">• STARTER / ENTERPRISE bounds</text>
+        <text x="580" y="435" fill="#a8a29e" font-size="8" text-anchor="middle">No Lifetime (Forever) plans</text>
+        <text x="580" y="455" fill="#fb7185" font-size="8" font-weight="700" text-anchor="middle">Zero-Leak Guard</text>
+
+
+        <!-- ================= SUPER ADMIN CONTROL ROOM ================= -->
+        <!-- Super Admin Panel -->
+        <rect x="740" y="100" width="220" height="240" rx="8" fill="rgba(76, 29, 149, 0.3)" stroke="#a78bfa" stroke-width="1.5"/>
+        <text x="850" y="125" fill="white" font-size="13" font-weight="700" text-anchor="middle">SuperAdmin.tsx (Control)</text>
+        <text x="850" y="142" fill="#a78bfa" font-size="9" text-anchor="middle">Protected Route: /#/settings</text>
+        <text x="850" y="165" fill="#f1f5f9" font-size="8" text-anchor="middle">• Locked with PIN: admin8888</text>
+        <text x="850" y="180" fill="#f1f5f9" font-size="8" text-anchor="middle">• Live Pricing Config Editor</text>
+        <text x="850" y="195" fill="#f1f5f9" font-size="8" text-anchor="middle">• Merchant CRM Lead registry</text>
+        <text x="850" y="210" fill="#f1f5f9" font-size="8" text-anchor="middle">• Auto-captured UTR logbook</text>
+        <text x="850" y="225" fill="#f1f5f9" font-size="8" text-anchor="middle">• Manual Dispatcher (WhatsApp)</text>
+        <text x="850" y="250" fill="#a78bfa" font-size="9" font-weight="700" text-anchor="middle">CRM &amp; Pricing Master Room</text>
+
+
+        <!-- ================= DATABASE / STORAGE LAYER ================= -->
+        <!-- LocalStorage / Local SQLite DB -->
+        <rect x="740" y="400" width="220" height="90" rx="6" fill="rgba(76, 29, 149, 0.4)" stroke="#a78bfa" stroke-width="1.5"/>
+        <text x="850" y="425" fill="white" font-size="12" font-weight="700" text-anchor="middle">LocalStorage Engine</text>
+        <text x="850" y="442" fill="#a78bfa" font-size="9" text-anchor="middle">Local-First Sandbox Storage</text>
+        <text x="850" y="460" fill="#e2e8f0" font-size="8" text-anchor="middle">• Tenants, Configs, Keys, Invoices</text>
+        <text x="850" y="473" fill="#e2e8f0" font-size="8" text-anchor="middle">• System clock log adaptors</text>
+
+
+        <!-- ================= EXTERNAL APIS & CHANNELS ================= -->
+        <!-- Indian NPCI UPI QR API -->
+        <rect x="440" y="550" width="120" height="50" rx="6" fill="transparent" stroke="#fb923c" stroke-width="1" stroke-dasharray="4,4"/>
+        <text x="500" y="570" fill="white" font-size="10" font-weight="600" text-anchor="middle">NPCI UPI Gateway</text>
+        <text x="500" y="583" fill="#fb923c" font-size="8" text-anchor="middle">Dynamic QrSvg</text>
+
+        <!-- WhatsApp Dispatch API -->
+        <rect x="840" y="550" width="120" height="50" rx="6" fill="transparent" stroke="#fb923c" stroke-width="1" stroke-dasharray="4,4"/>
+        <text x="900" y="570" fill="white" font-size="10" font-weight="600" text-anchor="middle">WhatsApp Web Link</text>
+        <text x="900" y="583" fill="#fb923c" font-size="8" text-anchor="middle">wa.me/91... API</text>
+
+        <!-- Daily Mandi Rates & Weather APIs -->
+        <rect x="40" y="550" width="130" height="50" rx="6" fill="transparent" stroke="#34d399" stroke-width="1" stroke-dasharray="4,4"/>
+        <text x="105" y="570" fill="white" font-size="10" font-weight="600" text-anchor="middle">External Mandi &amp; Weather</text>
+        <text x="105" y="583" fill="#34d399" font-size="8" text-anchor="middle">OpenWeather + Rates RSS</text>
+
+
+        <!-- ================= ARROWS / INTER-CONNECTIONS ================= -->
+        <!-- Merchant Entry to Shell -->
+        <line x1="160" y1="310" x2="208" y2="310" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+        <text x="184" y="303" fill="#94a3b8" font-size="8" text-anchor="middle">Access</text>
+
+        <!-- Mandi Page API links -->
+        <line x1="105" y1="548" x2="105" y2="342" stroke="#34d399" stroke-width="1.2" stroke-dasharray="3,3" />
+        <line x1="105" y1="342" x2="210" y2="342" stroke="#34d399" stroke-width="1.2" stroke-dasharray="3,3" marker-end="url(#arrowhead)" />
+        <text x="145" y="337" fill="#34d399" font-size="8">Feed</text>
+
+        <!-- Shell / Layout to Lock Screen checks -->
+        <line x1="430" y1="130" x2="488" y2="130" stroke="#fb7185" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+        <text x="459" y="124" fill="#fb7185" font-size="8" text-anchor="middle">Assert</text>
+
+        <!-- Lock Screen and Licensing core handshake -->
+        <line x1="580" y1="252" x2="580" y2="308" stroke="#fb7185" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+        <text x="590" y="280" fill="#fb7185" font-size="8">Verify</text>
+
+        <!-- Shell Layout to Licensing core for direct checking -->
+        <line x1="390" y1="380" x2="488" y2="380" stroke="#fb7185" stroke-width="1.2" marker-end="url(#arrowhead)"/>
+
+        <!-- Licensing checks Storage -->
+        <line x1="670" y1="440" x2="738" y2="440" stroke="#fb7185" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+        <text x="704" y="433" fill="#fb7185" font-size="8" text-anchor="middle">Read/Write</text>
+
+        <!-- Super Admin reads and updates Storage config and Leads -->
+        <line x1="850" y1="342" x2="850" y2="398" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+        <text x="860" y="370" fill="#a78bfa" font-size="8">CRUD</text>
+
+        <!-- Dynamic QR rendering call -->
+        <line x1="320" y1="437" x2="320" y2="575" stroke="#fbbf24" stroke-width="1.2" stroke-dasharray="3,3" />
+        <line x1="320" y1="575" x2="438" y2="575" stroke="#fbbf24" stroke-width="1.2" stroke-dasharray="3,3" marker-end="url(#arrowhead)" />
+        <text x="365" y="568" fill="#fbbf24" font-size="8">Generate QR</text>
+
+        <!-- SuperAdmin keys WhatsApp dispatch -->
+        <line x1="850" y1="342" x2="850" y2="548" stroke="#fb923c" stroke-width="1.2" stroke-dasharray="3,3" marker-end="url(#arrowhead)" />
+        <text x="865" y="525" fill="#fb923c" font-size="8">Send Key</text>
+
+
+        <!-- ================= LEGEND ================= -->
+        <text x="940" y="370" fill="white" font-size="10" font-weight="600">Legend</text>
+        
+        <rect x="940" y="382" width="16" height="10" rx="2" fill="rgba(8, 51, 68, 0.4)" stroke="#22d3ee" stroke-width="1"/>
+        <text x="962" y="390" fill="#94a3b8" font-size="8">SPA Views</text>
+        
+        <rect x="940" y="398" width="16" height="10" rx="2" fill="rgba(76, 29, 149, 0.4)" stroke="#a78bfa" stroke-width="1"/>
+        <text x="962" y="406" fill="#94a3b8" font-size="8">Admin &amp; DB</text>
+        
+        <rect x="940" y="414" width="16" height="10" rx="2" fill="rgba(136, 19, 55, 0.4)" stroke="#fb7185" stroke-width="1"/>
+        <text x="962" y="422" fill="#94a3b8" font-size="8">Security Gt</text>
+        
+        <line x1="940" y1="436" x2="956" y2="436" stroke="#fb923c" stroke-width="1.2" stroke-dasharray="2,2"/>
+        <text x="962" y="439" fill="#94a3b8" font-size="8">Ext APIs</text>
+      </svg>
+    </div>
+
+    <!-- Info Cards -->
+    <div class="cards">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot cyan"></div>
+          <h3>5 Core Workspace Boards</h3>
+        </div>
+        <ul>
+          <li>• <b>Board 1 (POS Billing):</b> Handles A4, 2-3&quot; thermal invoices, inventory sync and dynamic GST math.</li>
+          <li>• <b>Board 2 (Inventory):</b> Stocks ledger, tracks quantities, and flags low-stock items.</li>
+          <li>• <b>Board 3 (GST Filing):</b> Comprehensive period picker for GSTR-1, 2B, and GSTR-3B filings.</li>
+          <li>• <b>Board 4 (SaaS Pay):</b> Renders instant UPI QR Code and self-serve 12-digit UTR activation.</li>
+          <li>• <b>Board 5 (Daily Rates):</b> Integrates Soybean, Mustard rates and weather widgets.</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot rose"></div>
+          <h3>Dual-Fenced Security Vault</h3>
+        </div>
+        <ul>
+          <li>• <b>Mod-31 License Engine:</b> Cryptographically verifies plan signatures with no server roundtrips.</li>
+          <li>• <b>Monotonic Clock Adapter:</b> Thwarts computer system rollback bypasses with historical clock validation.</li>
+          <li>• <b>Vibe-Ship-Guard Suite:</b> Integrated TruffleHog + BLA counter-REA shield prevents leaks and binary patches.</li>
+          <li>• <b>Zero plaintext credentials:</b> Hashed master PIN and completely excluded secret files inside git.</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot violet"></div>
+          <h3>SuperAdmin Control Room</h3>
+        </div>
+        <ul>
+          <li>• <b>Route Location:</b> Click Settings -> Super Admin and unlock with master PIN: <code>admin8888</code>.</li>
+          <li>• <b>Live Pricing Panel:</b> Edit prices of Dukaan Monthly, Vyapaar Starter, and Business Pro plans instantly.</li>
+          <li>• <b>Merchant Lead CRM:</b> Tracks registration details, state code, active plan, and user-submitted UTR logs.</li>
+          <li>• <b>1-Click Key Dispatch:</b> Generates a crypto key and directs to a pre-filled WhatsApp link with one click.</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <p class="footer">
+      BillSaaS (Free GST Invoicing Platform) • Built for Indian Small Businesses &amp; Retailers • 100% Secure Production Build
+    </p>
+  </div>
+</body>
+</html>
