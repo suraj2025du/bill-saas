@@ -25,6 +25,10 @@
     "copy-ocr": "node scripts/copy-ocr-assets.mjs",
     "package": "node scripts/package-release.mjs",
     "heal:nightly": "node scripts/heal-nightly.mjs",
+    "security:vibe": "node C:/Users/Suraj/workplace/vibe-security-suite/vibe-ship-guard.mjs .",
+    "security:harden": "node C:/Users/Suraj/workplace/vibe-security-suite/vibe-ship-guard.mjs . --harden",
+    "security:trufflehog": "C:/Users/Suraj/workplace/vibe-security-suite/bin/trufflehog.exe filesystem . --no-update",
+    "security:bla": "node C:/Users/Suraj/workplace/vibe-security-suite/bla/dist/cli.js lint .",
     "postinstall": "node scripts/copy-ocr-assets.mjs"
   },
   "dependencies": {

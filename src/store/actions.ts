@@ -37,6 +37,7 @@ import type { Batch, PutOp } from '../data/adapter';
 import { putOp } from '../data/adapter';
 import { expiredTrash, restoreBatch, trashBatch } from '../data/trash';
 import { normalizeDocNo } from '../core/gst/returns/gstr2b';
+import { checkBusinessLimit, checkInvoiceLimit, getSoftwareLockState, type PlanTier } from '../core/licensing';
 import { StaleDataError, UserError } from './errors';
 import { selectBusiness, selectSettings } from './hooks';
 import { commit, createBackup, replaceAll, useStore } from './store';
@@ -98,7 +99,25 @@ export async function saveBusiness(b: Business): Promise<Business> {
 export async function addBusiness(b: Business): Promise<void> {
   const issues = businessIssues(b);
   if (issues.length) throw new UserError('Please fix the business details:', issues);
-  const { settings } = state();
+  const { data, settings } = state();
+  const lockState = getSoftwareLockState({
+    licenseType: settings.licenseType as PlanTier,
+    licenseExpiry: settings.licenseExpiry,
+    licenseKey: settings.licenseKey,
+    licenseDisabled: settings.licenseDisabled,
+    licenseDisabledReason: settings.licenseDisabledReason,
+    securityTamperDetected: settings.securityTamperDetected,
+    lastVerifiedClock: settings.lastVerifiedClock,
+  });
+  if (lockState.disabled) {
+    throw new UserError(lockState.message || 'Software is disabled.');
+  }
+  const bizCheck = checkBusinessLimit(data.businesses.length, {
+    licenseType: settings.licenseType as PlanTier,
+  });
+  if (!bizCheck.allowed) {
+    throw new UserError(bizCheck.reason || 'Business limit reached for your plan.');
+  }
   await commit(batchOf(putOp('businesses', b), putOp('settings', { ...settings, id: 'app', activeBusinessId: b.id, updatedAt: nowISO() })));
 }
 
@@ -279,13 +298,27 @@ export async function saveSalesDocument(input: SalesDocument, finalize: boolean)
   let doc = computeSales({ ...input, businessId: business.id, status: finalize ? 'FINAL' : input.status });
 
   const licSettings = data.settings[0];
-  const licType = licSettings?.licenseType || 'TRIAL';
-  if (!prev && doc.docType === 'TAX_INVOICE') {
-    const currentCount = data.invoices.filter((d) => d.docType === 'TAX_INVOICE' && d.businessId === business.id).length;
-    if (licType === 'TRIAL' && currentCount >= 50) {
-      throw new UserError('Licensing Restriction: You have reached the Free Trial limit of 50 tax invoices. Please activate your standard or enterprise license to create unlimited documents.');
-    } else if (licType === 'STARTER' && currentCount >= 500) {
-      throw new UserError('Licensing Restriction: You have reached the Starter License limit of 500 tax invoices. Please upgrade to an Enterprise license to create unlimited documents.');
+  if (licSettings) {
+    const lockState = getSoftwareLockState({
+      licenseType: licSettings.licenseType as PlanTier,
+      licenseExpiry: licSettings.licenseExpiry,
+      licenseKey: licSettings.licenseKey,
+      licenseDisabled: licSettings.licenseDisabled,
+      licenseDisabledReason: licSettings.licenseDisabledReason,
+      securityTamperDetected: licSettings.securityTamperDetected,
+      lastVerifiedClock: licSettings.lastVerifiedClock,
+    });
+    if (lockState.disabled) {
+      throw new UserError(lockState.message || 'Software is disabled.');
+    }
+  }
+  if (!prev && (doc.docType === 'TAX_INVOICE' || doc.docType === 'BILL_OF_SUPPLY')) {
+    const invCheck = checkInvoiceLimit(data.invoices, {
+      licenseType: licSettings?.licenseType as PlanTier,
+      licenseExpiry: licSettings?.licenseExpiry,
+    });
+    if (!invCheck.allowed) {
+      throw new UserError(invCheck.reason || 'Document quota exceeded.');
     }
   }
   const series = business.series[doc.docType];

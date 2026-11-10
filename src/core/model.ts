@@ -620,11 +620,15 @@ export interface AppSettings extends Timestamps {
   drive: { clientId: string; autoUploadPdf: boolean; folderId: string; lastBackupAt: ISODateTime | '' };
   dismissedNotifications: string[];
   schemaVersion: number;
-  licenseType?: 'TRIAL' | 'STARTER' | 'ENTERPRISE';
+  licenseType?: 'TRIAL' | 'MONTHLY' | 'STARTER' | 'ENTERPRISE';
   licenseKey?: string;
   licenseExpiry?: string;
   licenseOwner?: string;
   licenseActivatedAt?: string;
+  licenseDisabled?: boolean;
+  licenseDisabledReason?: string;
+  securityTamperDetected?: boolean;
+  lastVerifiedClock?: string;
 }
 
 export type TrashableCollection = Exclude<CollectionName, 'settings' | 'trash'>;

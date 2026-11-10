@@ -63,6 +63,7 @@ export interface InvoiceView {
   watermark: string;
   copies: string[];
   allServices: boolean;
+  isTrial?: boolean;
 }
 
 /** Watermark text for a document: CANCELLED / DRAFT win over the chosen stamp. */
@@ -83,7 +84,7 @@ export function watermarkFor(doc: SalesDocument, s: PrintSettings, payment: Paym
 export function buildInvoiceView(
   doc: SalesDocument,
   business: Business,
-  opts: { settings?: PrintSettings; payment?: PaymentSummary | null; copyLabels?: boolean } = {},
+  opts: { settings?: PrintSettings; payment?: PaymentSummary | null; copyLabels?: boolean; isTrial?: boolean } = {},
 ): InvoiceView {
   const settings = opts.settings ?? business.print;
   const template: TemplateId = doc.template || settings.template;
@@ -188,6 +189,7 @@ export function buildInvoiceView(
     watermark: watermarkFor(doc, settings, payment),
     copies,
     allServices,
+    isTrial: opts.isTrial,
   };
 }
 

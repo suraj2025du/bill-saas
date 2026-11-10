@@ -21,6 +21,7 @@ import {
   ArrowRightLeft,
   Rows3,
   BadgePercent,
+  HardDrive,
 } from 'lucide-react';
 import type { Business } from '../core/model';
 
@@ -43,7 +44,13 @@ const india = (b: Business) => b.countryCode === 'IN';
 const inventory = (b: Business) => b.features.inventory;
 
 export const NAV: NavGroup[] = [
-  { label: '', items: [{ to: '/', label: 'Dashboard', icon: LayoutDashboard, keywords: 'home overview' }] },
+  {
+    label: '',
+    items: [
+      { to: '/', label: 'Dashboard', icon: LayoutDashboard, keywords: 'home overview' },
+      { to: '/daily', label: 'Daily & Price Board', icon: Calculator, keywords: 'daily work price check rate list mrp gst calculator busy tally' },
+    ],
+  },
   {
     label: 'Sales',
     items: [
@@ -91,7 +98,13 @@ export const NAV: NavGroup[] = [
       { to: '/itr', label: 'Income tax helper', icon: Calculator, keywords: 'itr old new regime 44ad 234b 234c', show: india },
     ],
   },
-  { label: '', items: [{ to: '/settings', label: 'Settings', icon: Settings, keywords: 'business print backup pin units' }] },
+  {
+    label: '',
+    items: [
+      { to: '/portal', label: 'Company Portal & USB', icon: HardDrive, keywords: 'company portal busy tally pen drive portable download license pricing' },
+      { to: '/settings', label: 'Settings', icon: Settings, keywords: 'business print backup pin units' },
+    ],
+  },
 ];
 
 export function visibleNav(b: Business): NavGroup[] {

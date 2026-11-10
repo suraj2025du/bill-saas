@@ -1,5 +1,5 @@
 import { Database, RefreshCw, TriangleAlert } from 'lucide-react';
-import { Fragment, Suspense, lazy, useEffect, useRef } from 'react';
+import { Fragment, Suspense, lazy, useEffect, useRef, useState } from 'react';
 import type { ComponentType, ReactNode } from 'react';
 import { Link, RouterProvider, createHashRouter, useLocation, useRouteError } from 'react-router';
 import { Dashboard } from './features/dashboard/Dashboard';
@@ -46,6 +46,8 @@ function RouteError() {
 const NotFound = () => <EmptyState title="Page not found" action={<Link className="btn btn-secondary" to="/">Go to dashboard</Link>} />;
 // Shown once per install, so it is not part of the start-up bundle.
 const SetupWizard = lazy(() => import('./features/setup/SetupWizard').then((m) => ({ default: m.SetupWizard })));
+const SuperAdminLazy = lazy(() => import('./features/settings/SuperAdmin').then((m) => ({ default: m.SuperAdminPage })));
+const CompanyHomeLazy = lazy(() => import('./features/portal/CompanyHomePage').then((m) => ({ default: m.CompanyHomePage })));
 const PageLoading = () => (
   <div className="flex justify-center p-10">
     <Spinner />
@@ -137,6 +139,9 @@ const router = createHashRouter([
         { path: 'settings/trash', ...screen(dataSettings, (m) => m.TrashPage) },
         { path: 'settings/diagnostics', ...screen(() => import('./features/settings/Diagnostics'), (m) => m.DiagnosticsPage) },
         { path: 'settings/super-admin', ...screen(() => import('./features/settings/SuperAdmin'), (m) => m.SuperAdminPage) },
+        { path: 'super-admin', ...screen(() => import('./features/settings/SuperAdmin'), (m) => m.SuperAdminPage) },
+        { path: 'portal', ...screen(() => import('./features/portal/CompanyHomePage'), (m) => m.CompanyHomePage) },
+        { path: 'daily', ...screen(() => import('./features/portal/CompanyHomePage'), (m) => m.CompanyHomePage) },
         { path: '*', element: <NotFound /> },
       ] },
     ],
@@ -187,11 +192,36 @@ export function App() {
     });
   }, [ready, unlocked]);
 
+  const [hash, setHash] = useState(() => (typeof window !== 'undefined' ? window.location.hash : ''));
+  useEffect(() => {
+    const onHash = () => setHash(window.location.hash);
+    window.addEventListener('hashchange', onHash);
+    return () => window.removeEventListener('hashchange', onHash);
+  }, []);
+
+  const isSuperAdminRoute = hash.includes('super-admin');
+  const isPortalRoute = hash.includes('portal') || hash.includes('daily');
+
   let body: ReactNode;
   if (state === 'loading') body = <Spinner label="Opening your books..." />;
   else if (state === 'error') body = <BootError message={bootError} />;
   else if (!settings.setupComplete || !biz)
-    body = (
+    body = isSuperAdminRoute ? (
+      <Suspense fallback={<Spinner label="Opening Super Admin..." />}>
+        <div className="min-h-screen bg-slate-50 p-4 md:p-8">
+          <div className="mx-auto max-w-7xl">
+            <div className="mb-4 flex justify-end">
+              <a href="#/" className="btn btn-secondary text-xs">← Back to Setup Wizard</a>
+            </div>
+            <SuperAdminLazy />
+          </div>
+        </div>
+      </Suspense>
+    ) : isPortalRoute ? (
+      <Suspense fallback={<Spinner label="Opening Company Portal..." />}>
+        <CompanyHomeLazy />
+      </Suspense>
+    ) : (
       <Suspense fallback={<Spinner label="Opening the setup..." />}>
         <SetupWizard />
       </Suspense>

@@ -61,7 +61,10 @@ export function PeriodPicker({ value, onChange, allowYear = false }: { value: Pe
               aria-label="Quarter"
               value={String(value.quarter)}
               onValue={(q) => onChange({ ...value, quarter: Number(q) as 1 | 2 | 3 | 4 })}
-              options={[1, 2, 3, 4].map((q) => ({ value: String(q), label: quarterPeriod(value.fy, q as 1 | 2 | 3 | 4, biz.fyStartMonth).label }))}
+              options={Array.from({ length: 4 }, (_, idx) => (idx + 1) as 1 | 2 | 3 | 4).map((q) => ({
+                value: String(q),
+                label: quarterPeriod(value.fy, q, biz.fyStartMonth).label,
+              }))}
             />
           )}
         </>

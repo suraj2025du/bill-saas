@@ -3,10 +3,12 @@ import { useRef, useState } from 'react';
 import { DOC_TYPES } from '../../core/docs/docTypes';
 import type { PaymentIndex, PaymentSummary } from '../../core/docs/payments';
 import { salesPaymentSummary } from '../../core/docs/payments';
+import { isLicenseExpired } from '../../core/licensing';
 import type { Business, PrintSettings, SalesDocument } from '../../core/model';
 import { InvoiceDocument } from '../../print/InvoiceDocument';
 import { bulkPdfZip, nodeToPdf, pageSpec, printNode } from '../../print/printing';
 import { buildInvoiceView, pageOf } from '../../print/view';
+import { useStore } from '../../store/store';
 import { toast } from '../../ui/feedback';
 import { downloadBlob } from '../../ui/files';
 import { Badge, Button, Modal } from '../../ui/kit';
@@ -29,7 +31,13 @@ export function StatusBadge({ doc, index }: { doc: SalesDocument; index: Payment
 }
 
 export function docView(doc: SalesDocument, business: Business, index: PaymentIndex | null, settings?: PrintSettings) {
-  return buildInvoiceView(doc, business, { settings, payment: index ? salesPaymentSummary(doc, index) : null });
+  const currentSettings = useStore.getState().data.settings[0];
+  const isTrial = !currentSettings || currentSettings.licenseType === 'TRIAL' || isLicenseExpired(currentSettings);
+  return buildInvoiceView(doc, business, {
+    settings,
+    payment: index ? salesPaymentSummary(doc, index) : null,
+    isTrial,
+  });
 }
 
 export function docFileName(doc: SalesDocument): string {

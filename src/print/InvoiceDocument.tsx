@@ -62,6 +62,11 @@ function Sheet({ view, copy, page }: { view: InvoiceView; copy: string; page: 'A
     <div className="print-sheet print-page" data-page={page} style={style}>
       <Watermark text={view.watermark} opacity={s.watermark.opacity} position={s.watermark.position} color={s.colors.accent} />
       {view.template === 'TALLY' ? <TallyLayout view={view} copy={copy} /> : <StandardLayout view={view} copy={copy} variant={view.template} />}
+      {view.isTrial && (
+        <div style={{ marginTop: '4mm', paddingTop: '2mm', borderTop: '1px dashed #cbd5e1', textAlign: 'center', fontSize: '7.5pt', color: '#64748b' }}>
+          Printed using BillSaaS Pro • Free Trial Edition • To remove this footer, upgrade at bill-saas.com
+        </div>
+      )}
     </div>
   );
 }

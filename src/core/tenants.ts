@@ -6,7 +6,7 @@ export interface SaasTenant {
   city: string;
   stateCode: string;
   gstin?: string;
-  plan: 'TRIAL' | 'STARTER' | 'ENTERPRISE';
+  plan: 'TRIAL' | 'MONTHLY' | 'STARTER' | 'ENTERPRISE';
   invoicesCount: number;
   registeredAt: string;
   lastActiveAt: string;
@@ -85,7 +85,7 @@ export function updateTenantActivity(phoneOrId: string, count: number): void {
   }
 }
 
-export function updateTenantPlan(tenantId: string, plan: 'STARTER' | 'ENTERPRISE'): void {
+export function updateTenantPlan(tenantId: string, plan: 'MONTHLY' | 'STARTER' | 'ENTERPRISE'): void {
   const tenants = getTenants();
   const t = tenants.find((item) => item.id === tenantId);
   if (t) {
@@ -93,6 +93,29 @@ export function updateTenantPlan(tenantId: string, plan: 'STARTER' | 'ENTERPRISE
     t.lastActiveAt = new Date().toISOString();
     saveTenants(tenants);
   }
+}
+
+export function recordPlanInquiryLead(input: {
+  shopName: string;
+  ownerName: string;
+  phone: string;
+  city: string;
+  stateCode: string;
+  gstin?: string;
+  selectedPlan: 'MONTHLY' | 'STARTER' | 'ENTERPRISE';
+  quotedPrice?: number;
+  paymentUtr?: string;
+}): SaasTenant {
+  const tenant = registerTenant({
+    shopName: input.shopName,
+    ownerName: input.ownerName,
+    phone: input.phone,
+    city: input.city,
+    stateCode: input.stateCode,
+    gstin: input.gstin,
+  });
+  updateTenantPlan(tenant.id, input.selectedPlan);
+  return { ...tenant, plan: input.selectedPlan };
 }
 
 function getDefaultTenants(): SaasTenant[] {
@@ -128,9 +151,41 @@ function getDefaultTenants(): SaasTenant[] {
 
 const WEBHOOK_KEY = 'bill_saas_lead_webhook_url';
 
+/**
+ * Validates that a Lead Sync Webhook URL uses encrypted HTTPS and does not target
+ * loopback, link-local, or RFC1918 private LAN addresses (Client-Side SSRF & PII leak guard).
+ */
+export function isSafeWebhookUrl(rawUrl: string): boolean {
+  const trimmed = rawUrl.trim();
+  if (!trimmed) return false;
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.protocol !== 'https:') return false;
+    const host = parsed.hostname.toLowerCase().replace(/^\[|\]$/g, '');
+    if (
+      host === 'localhost' ||
+      host === '0.0.0.0' ||
+      host === '::1' ||
+      host.endsWith('.local') ||
+      host.endsWith('.internal') ||
+      /^127\./.test(host) ||
+      /^10\./.test(host) ||
+      /^192\.168\./.test(host) ||
+      /^169\.254\./.test(host) ||
+      /^172\.(1[6-9]|2\d|3[01])\./.test(host)
+    ) {
+      return false;
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function getLeadWebhookUrl(): string {
   try {
-    return localStorage.getItem(WEBHOOK_KEY) || '';
+    const stored = localStorage.getItem(WEBHOOK_KEY) || '';
+    return isSafeWebhookUrl(stored) ? stored : '';
   } catch {
     return '';
   }
@@ -138,7 +193,15 @@ export function getLeadWebhookUrl(): string {
 
 export function setLeadWebhookUrl(url: string): void {
   try {
-    localStorage.setItem(WEBHOOK_KEY, url.trim());
+    const trimmed = url.trim();
+    if (!trimmed) {
+      localStorage.removeItem(WEBHOOK_KEY);
+      return;
+    }
+    if (!isSafeWebhookUrl(trimmed)) {
+      return;
+    }
+    localStorage.setItem(WEBHOOK_KEY, trimmed);
   } catch {
     // ignore
   }
@@ -146,7 +209,7 @@ export function setLeadWebhookUrl(url: string): void {
 
 export async function dispatchLeadNotification(tenant: SaasTenant): Promise<boolean> {
   const webhookUrl = getLeadWebhookUrl();
-  if (!webhookUrl) return false;
+  if (!webhookUrl || !isSafeWebhookUrl(webhookUrl)) return false;
 
   try {
     const payload = {

@@ -22,8 +22,10 @@ if (import.meta.env.PROD && 'serviceWorker' in navigator && window.isSecureConte
   import('virtual:pwa-register')
     .then(({ registerSW }) => {
       const update = registerSW({
+        immediate: true,
         onNeedRefresh() {
           useAppUpdate.setState({ ready: true, apply: () => void update(true) });
+          void update(true);
         },
       });
     })

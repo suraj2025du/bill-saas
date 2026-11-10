@@ -1,17 +1,20 @@
-import { Building2, ChevronDown, CircleHelp, Loader2, Lock, Menu, Plus, Search, X, Sparkles, Star, Crown, QrCode } from 'lucide-react';
+import { Building2, ChevronDown, CircleHelp, Loader2, Lock, Menu, Plus, Search, X, Sparkles, Star, Crown, CheckCircle, Copy, Calendar, HardDrive } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router';
 import { switchBusiness, updateSettings } from '../store/actions';
 import { useBusiness, useSettings } from '../store/hooks';
 import { setUnlocked, useStore } from '../store/store';
 import { attempt, toast } from '../ui/feedback';
-import { validateLicenseKey } from '../core/licensing';
+import { getBillingDocsCount, getDaysRemaining, buildLicenseActivationPatch, verifyUpiUtrAndBuildActivation, isGreatPlanActive } from '../core/licensing';
+import { getSaasConfig } from '../core/saasConfig';
+import { QrSvg, upiLink } from '../print/codes';
 import { Kbd, cx } from '../ui/kit';
 import { useIdleLock } from './appState';
 import { CommandPalette } from './CommandPalette';
 import { HelpDrawer } from './HelpDrawer';
 import { visibleNav } from './nav';
 import { NotificationBell } from './NotificationBell';
+import { SoftwareLockModal } from '../features/portal/SoftwareLockModal';
 
 function BusinessSwitcher() {
   const biz = useBusiness();
@@ -90,34 +93,53 @@ export function Layout() {
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [activationKey, setActivationKey] = useState('');
   const [activationOwner, setActivationOwner] = useState('');
+  const [upiUtrNumber, setUpiUtrNumber] = useState('');
+  const [selectedPlan, setSelectedPlan] = useState<'MONTHLY' | 'STARTER' | 'ENTERPRISE'>('STARTER');
+
+  const invoices = useStore((s) => s.data.invoices);
+  const billingDocsCount = getBillingDocsCount(invoices);
+  const daysRemaining = getDaysRemaining(settings);
+  const saasConfig = getSaasConfig();
+  const isGreatPlan = isGreatPlanActive(settings);
 
   const handleActivateLicense = () => {
     if (!activationKey.trim()) {
       toast.error('Kripya apna License Key paste karein.');
       return;
     }
-    const res = validateLicenseKey(activationKey);
-    if (!res.valid) {
+    const res = buildLicenseActivationPatch(
+      activationKey,
+      activationOwner.trim() || biz.name || 'Indian MSME Subscriber',
+    );
+    if (!res.valid || !res.patch) {
       toast.error(res.error || 'Invalid License Key! Dobara check karein.');
       return;
     }
 
-    const thirtyDaysLater = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-    const expiryDate = res.type === 'STARTER' ? thirtyDaysLater : '2099-12-31';
-
     void attempt(
-      () =>
-        updateSettings({
-          licenseType: res.type!,
-          licenseKey: activationKey.trim().toUpperCase(),
-          licenseOwner: activationOwner.trim() || 'Premium SaaS Subscriber',
-          licenseExpiry: expiryDate,
-          licenseActivatedAt: new Date().toISOString().split('T')[0],
-        }),
-      `Mubarak ho! Aapka BillSaaS ${res.type} Plan successfully activate ho gaya hai.`
+      () => updateSettings(res.patch!),
+      `Mubarak ho! Aapka BillSaaS ${res.type} Plan (Valid till ${res.patch.licenseExpiry}) successfully activate ho gaya hai.`
     );
     setUpgradeOpen(false);
     setActivationKey('');
+  };
+
+  const handleInstantUpiUtrActivation = () => {
+    const res = verifyUpiUtrAndBuildActivation(
+      upiUtrNumber,
+      selectedPlan,
+      activationOwner.trim() || biz.name || 'Indian MSME Subscriber',
+    );
+    if (!res.valid || !res.patch) {
+      toast.error(res.error || 'Invalid 12-digit UPI UTR Number.');
+      return;
+    }
+    void attempt(
+      () => updateSettings(res.patch!),
+      `Payment Verified (UTR: ${res.utrClean})! Aapka Plan (${res.patch.licenseExpiry} tak) activate ho gaya hai.`
+    );
+    setUpgradeOpen(false);
+    setUpiUtrNumber('');
   };
 
   useIdleLock(settings);
@@ -201,14 +223,36 @@ export function Layout() {
 
             {/* SaaS Pricing Plan Status Pill & Upgrade CTA */}
             <div className="flex items-center gap-1.5 mr-2">
-              {settings.licenseType === 'ENTERPRISE' ? (
-                <span className="flex items-center gap-1 bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-1 rounded-full text-xs font-bold">
-                  <Crown className="h-3.5 w-3.5 text-emerald-600 animate-pulse" /> Unlimited Enterprise
-                </span>
+              {isGreatPlan ? (
+                <div className="flex items-center gap-1">
+                  <span className="flex items-center gap-1 bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-1 rounded-full text-xs font-bold">
+                    <Crown className="h-3.5 w-3.5 text-emerald-600" /> Business Pro (Unlimited • {daysRemaining}d left)
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setUpgradeOpen(true)}
+                    className="flex items-center gap-1 bg-slate-100 hover:bg-slate-200 text-slate-700 px-2 py-1 rounded-full text-[11px] font-bold transition"
+                  >
+                    Plans
+                  </button>
+                </div>
+              ) : settings.licenseType === 'MONTHLY' ? (
+                <div className="flex items-center gap-1">
+                  <span className="flex items-center gap-1 bg-indigo-50 text-indigo-700 border border-indigo-200 px-2.5 py-1 rounded-full text-xs font-bold">
+                    <Calendar className="h-3.5 w-3.5 text-indigo-600" /> Dukaan Monthly ({Math.max(0, 250 - billingDocsCount)} left • {daysRemaining}d)
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setUpgradeOpen(true)}
+                    className="flex items-center gap-1 bg-gradient-to-r from-indigo-500 to-indigo-600 text-white hover:from-indigo-600 hover:to-indigo-700 px-2.5 py-1 rounded-full text-xs font-bold shadow-sm transition animate-pulse"
+                  >
+                    <Sparkles className="h-3.5 w-3.5" /> Renew / Upgrade
+                  </button>
+                </div>
               ) : settings.licenseType === 'STARTER' ? (
                 <div className="flex items-center gap-1">
                   <span className="flex items-center gap-1 bg-blue-50 text-blue-700 border border-blue-200 px-2.5 py-1 rounded-full text-xs font-bold">
-                    <Star className="h-3.5 w-3.5 text-blue-600" /> Starter Plan
+                    <Star className="h-3.5 w-3.5 text-blue-600" /> Vyapaar Starter ({Math.max(0, 500 - billingDocsCount)} left • {daysRemaining}d)
                   </span>
                   <button
                     type="button"
@@ -221,14 +265,14 @@ export function Layout() {
               ) : (
                 <div className="flex items-center gap-1">
                   <span className="flex items-center gap-1 bg-amber-50 text-amber-700 border border-amber-200 px-2.5 py-1 rounded-full text-xs font-bold animate-pulse">
-                    ⭐ Free Trial
+                    ⭐ Free Trial ({Math.max(0, 50 - billingDocsCount)}/50 left • {daysRemaining}d)
                   </span>
                   <button
                     type="button"
                     onClick={() => setUpgradeOpen(true)}
                     className="flex items-center gap-1 bg-gradient-to-r from-indigo-500 to-indigo-600 text-white hover:from-indigo-600 hover:to-indigo-700 px-2.5 py-1 rounded-full text-xs font-bold shadow-sm transition"
                   >
-                    <Sparkles className="h-3.5 w-3.5" /> Upgrade Plan
+                    <Sparkles className="h-3.5 w-3.5" /> Choose Plan
                   </button>
                 </div>
               )}
@@ -252,13 +296,14 @@ export function Layout() {
           <Outlet />
         </main>
       </div>
+      <SoftwareLockModal />
       <CommandPalette open={palette} onClose={() => setPalette(false)} />
       <HelpDrawer open={help} onClose={() => setHelp(false)} path={location.pathname} />
 
-      {/* SaaS Premium Upgrade Modal */}
+      {/* SaaS Digital Subscription Plans & Instant Self-Serve Checkout Modal */}
       {upgradeOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm">
-          <div className="relative w-full max-w-2xl bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[90vh]">
+          <div className="relative w-full max-w-3xl bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[90vh]">
             
             {/* Modal Header */}
             <div className="bg-gradient-to-r from-indigo-900 to-slate-900 p-6 text-white relative">
@@ -269,62 +314,203 @@ export function Layout() {
               >
                 <X className="h-5 w-5" />
               </button>
-              <div className="flex items-center gap-2 text-indigo-300 text-xs font-bold uppercase tracking-wider mb-1">
-                <Sparkles className="h-4 w-4" /> Commercial SaaS Licensing
+              <div className="flex items-center justify-between pr-8">
+                <div className="flex items-center gap-2 text-indigo-300 text-xs font-bold uppercase tracking-wider mb-1">
+                  <Sparkles className="h-4 w-4" /> Indian Small Business (MSME) Plans • Digital Self-Serve Checkout
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setUpgradeOpen(false);
+                    navigate('/portal');
+                  }}
+                  className="text-[11px] bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-400/40 px-2.5 py-1 rounded-full font-bold flex items-center gap-1 transition"
+                >
+                  <HardDrive className="h-3 w-3" /> Company Portal &amp; Pen Drive Download
+                </button>
               </div>
               <h3 className="text-xl sm:text-2xl font-black">
-                Upgrade to Premium Plans
+                Apni Dukaan / Vyapaar Ke Liye Plan Chunein
               </h3>
               <p className="text-slate-300 text-xs sm:text-sm mt-1">
-                Apne business ko grow karein unlimited invoicing aur multi-device backups ke sath!
+                1️⃣ Features Padhein → 2️⃣ Apna Plan Select Karein → 3️⃣ UPI Pay Karke 12-Digit UTR Dalein (Turant Auto-Activate!)
               </p>
             </div>
 
             {/* Modal Body */}
             <div className="p-6 overflow-y-auto space-y-6 flex-1 text-slate-700">
               
-              {/* Plan Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Plan Grid (3 Recurring MSME Tiers — No Lifetime Free) */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 
-                {/* Starter Plan Card */}
-                <div className="border border-slate-200 rounded-xl p-4 bg-slate-50/50 relative hover:shadow-md transition">
-                  <div className="absolute top-3 right-3 bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded text-[10px] font-bold">
-                    POPULAR
+                {/* Plan 1: Dukaan Monthly Plan */}
+                <div
+                  onClick={() => setSelectedPlan('MONTHLY')}
+                  className={cx(
+                    'border rounded-xl p-4 cursor-pointer relative transition',
+                    selectedPlan === 'MONTHLY' ? 'border-indigo-600 bg-indigo-50/40 ring-2 ring-indigo-500/30' : 'border-slate-200 bg-slate-50/50 hover:border-slate-300'
+                  )}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="bg-amber-100 text-amber-800 px-2 py-0.5 rounded text-[10px] font-bold">
+                      CHHOTI DUKAAN • 30 DAYS
+                    </div>
+                    {selectedPlan === 'MONTHLY' && <CheckCircle className="h-4 w-4 text-indigo-600" />}
                   </div>
-                  <h4 className="font-bold text-slate-800 flex items-center gap-1">
-                    <Star className="h-4 w-4 text-indigo-500 fill-indigo-500" /> Starter Plan
+                  <h4 className="font-bold text-slate-800 flex items-center gap-1 mt-2">
+                    <Calendar className="h-4 w-4 text-amber-600" /> Dukaan Monthly
                   </h4>
-                  <div className="text-2xl font-black text-slate-900 mt-2">
-                    ₹999<span className="text-xs text-slate-400 font-normal"> / year</span>
+                  <div className="text-2xl font-black text-slate-900 mt-1">
+                    ₹{saasConfig.monthlyPrice}<span className="text-xs text-slate-400 font-normal"> / month (₹6.5/day)</span>
                   </div>
                   <ul className="text-xs text-slate-500 space-y-1.5 mt-3">
-                    <li className="flex items-center gap-1">✅ Max 500 Tax Invoices</li>
-                    <li className="flex items-center gap-1">✅ A4 &amp; Thermal Printing</li>
-                    <li className="flex items-center gap-1">✅ GSTR-1 &amp; GSTR-3B Reports</li>
-                    <li className="flex items-center gap-1">✅ Custom GST Rates &amp; HSN</li>
+                    <li className="flex items-center gap-1">✅ 250 GST Bills / month</li>
+                    <li className="flex items-center gap-1">✅ 1 Shop / Business Profile</li>
+                    <li className="flex items-center gap-1">✅ Thermal POS + A4 Print</li>
+                    <li className="flex items-center gap-1 text-amber-700 font-semibold">⚠️ Auto-pauses if unpaid on Day 30</li>
                   </ul>
                 </div>
 
-                {/* Enterprise Plan Card */}
-                <div className="border border-indigo-200 rounded-xl p-4 bg-indigo-50/20 relative hover:shadow-md transition">
-                  <div className="absolute top-3 right-3 bg-indigo-600 text-white px-2 py-0.5 rounded text-[10px] font-bold">
-                    RECOMMENDED
+                {/* Plan 2: Vyapaar Starter Yearly (Most Popular) */}
+                <div
+                  onClick={() => setSelectedPlan('STARTER')}
+                  className={cx(
+                    'border rounded-xl p-4 cursor-pointer relative transition',
+                    selectedPlan === 'STARTER' ? 'border-indigo-600 bg-indigo-50/40 ring-2 ring-indigo-500/30' : 'border-slate-200 bg-slate-50/50 hover:border-slate-300'
+                  )}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="bg-indigo-600 text-white px-2 py-0.5 rounded text-[10px] font-bold">
+                      ⭐ POPULAR • ₹66/MO
+                    </div>
+                    {selectedPlan === 'STARTER' && <CheckCircle className="h-4 w-4 text-indigo-600" />}
                   </div>
-                  <h4 className="font-bold text-slate-800 flex items-center gap-1">
-                    <Crown className="h-4 w-4 text-amber-500 fill-amber-500 animate-pulse" /> Enterprise Unlimited
+                  <h4 className="font-bold text-slate-800 flex items-center gap-1 mt-2">
+                    <Star className="h-4 w-4 text-indigo-500 fill-indigo-500" /> Vyapaar Starter (1 Yr)
                   </h4>
-                  <div className="text-2xl font-black text-slate-900 mt-2">
-                    ₹2,999<span className="text-xs text-slate-400 font-normal"> / lifetime</span>
+                  <div className="text-2xl font-black text-slate-900 mt-1">
+                    ₹{saasConfig.starterPrice}<span className="text-xs text-slate-400 font-normal"> / year (365 Days)</span>
                   </div>
                   <ul className="text-xs text-slate-500 space-y-1.5 mt-3">
-                    <li className="flex items-center gap-1 text-slate-700 font-semibold">💎 Unlimited Tax Invoices</li>
-                    <li className="flex items-center gap-1 text-slate-700 font-semibold">💎 Multi-Device Cloud Sync</li>
-                    <li className="flex items-center gap-1">✅ Barcode Scanning &amp; Billing</li>
-                    <li className="flex items-center gap-1">✅ Unlimited Businesses / Tenants</li>
+                    <li className="flex items-center gap-1">✅ 500 GST Invoices / year</li>
+                    <li className="flex items-center gap-1">✅ 2 Business Profiles</li>
+                    <li className="flex items-center gap-1">✅ No Watermark + Daily Price Check</li>
+                    <li className="flex items-center gap-1">✅ GSTR-1, 2B &amp; 3B Reports</li>
+                  </ul>
+                </div>
+
+                {/* Plan 3: Business Pro Annual (1 Year Unlimited) */}
+                <div
+                  onClick={() => setSelectedPlan('ENTERPRISE')}
+                  className={cx(
+                    'border rounded-xl p-4 cursor-pointer relative transition',
+                    selectedPlan === 'ENTERPRISE' ? 'border-indigo-600 bg-indigo-50/40 ring-2 ring-indigo-500/30' : 'border-slate-200 bg-slate-50/50 hover:border-slate-300'
+                  )}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="bg-emerald-600 text-white px-2 py-0.5 rounded text-[10px] font-bold">
+                      1 YEAR UNLIMITED PRO
+                    </div>
+                    {selectedPlan === 'ENTERPRISE' && <CheckCircle className="h-4 w-4 text-indigo-600" />}
+                  </div>
+                  <h4 className="font-bold text-slate-800 flex items-center gap-1 mt-2">
+                    <Crown className="h-4 w-4 text-amber-500 fill-amber-500" /> Business Pro (1 Yr)
+                  </h4>
+                  <div className="text-2xl font-black text-slate-900 mt-1">
+                    ₹{saasConfig.enterprisePrice}<span className="text-xs text-slate-400 font-normal"> / year (365 Days)</span>
+                  </div>
+                  <ul className="text-xs text-slate-500 space-y-1.5 mt-3">
+                    <li className="flex items-center gap-1 text-slate-700 font-semibold">💎 Unlimited GST Bills (1 Year)</li>
+                    <li className="flex items-center gap-1 text-slate-700 font-semibold">💎 Unlimited Businesses / Godowns</li>
+                    <li className="flex items-center gap-1 text-emerald-700 font-semibold">✅ E-Way Bill, Barcode &amp; Tally Export</li>
+                    <li className="flex items-center gap-1">✅ Annual Renewal • Priority Support</li>
                   </ul>
                 </div>
 
               </div>
+
+              {/* Purchase Details, Dynamic UPI QR & Self-Serve 12-Digit UTR Activation */}
+              {(() => {
+                const planPrice =
+                  selectedPlan === 'MONTHLY'
+                    ? saasConfig.monthlyPrice
+                    : selectedPlan === 'STARTER'
+                    ? saasConfig.starterPrice
+                    : saasConfig.enterprisePrice;
+                const uri = upiLink(saasConfig.adminUpiVpa, saasConfig.adminPayeeName, planPrice, 'INR', `BillSaaS ${selectedPlan}`);
+                const waMsg = `Hi Suraj ji, I have paid ₹${planPrice} for BillSaaS ${selectedPlan}. Business: ${biz.name}, Phone: ${biz.phone || ''}. Please generate my Premium License Key.`;
+                const cleanPhone = saasConfig.adminPhone.replace(/\D/g, '');
+                const waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(waMsg)}`;
+
+                return (
+                  <div className="flex flex-wrap sm:flex-nowrap items-center gap-4 bg-amber-50/60 p-4 rounded-xl border border-amber-200">
+                    <div className="shrink-0 bg-white border border-amber-300 rounded-lg p-2 shadow-sm flex flex-col items-center">
+                      <QrSvg text={uri} size={110} title={`Scan to Pay ₹${planPrice}`} />
+                      <span className="text-[10px] font-bold text-slate-500 mt-1">Scan with GPay/PhonePe</span>
+                    </div>
+                    <div className="flex-1 min-w-[200px] space-y-2">
+                      <div className="flex items-center justify-between">
+                        <h5 className="font-bold text-slate-800 text-sm">
+                          Step 2: Pay ₹{planPrice} for {selectedPlan === 'MONTHLY' ? 'Dukaan Monthly (30 Days)' : selectedPlan === 'STARTER' ? 'Vyapaar Starter (1 Year)' : 'Business Pro Annual (1 Year Unlimited)'}
+                        </h5>
+                      </div>
+                      <div className="flex items-center gap-2 text-xs text-slate-600 bg-white px-2.5 py-1.5 rounded border border-slate-200 font-mono">
+                        <span className="truncate">UPI ID: <b>{saasConfig.adminUpiVpa}</b></span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(saasConfig.adminUpiVpa);
+                            toast.success('UPI ID copied to clipboard!');
+                          }}
+                          className="text-indigo-600 hover:text-indigo-800 shrink-0"
+                          title="Copy UPI ID"
+                        >
+                          <Copy className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                      {/* Step 3: Instant Self-Serve UTR Verification */}
+                      <div className="bg-emerald-50 border border-emerald-300 rounded-lg p-2.5 space-y-1.5">
+                        <label className="block text-[11px] font-extrabold text-emerald-900">
+                          ⚡ Step 3: Payment Karne Ke Baad 12-Digit UPI UTR / Ref No. Dalein (Instant Activate):
+                        </label>
+                        <div className="flex flex-col sm:flex-row gap-2">
+                          <input
+                            type="text"
+                            maxLength={12}
+                            value={upiUtrNumber}
+                            onChange={(e) => setUpiUtrNumber(e.target.value.replace(/\D/g, ''))}
+                            placeholder="12-digit UPI UTR (e.g. 412345678901)"
+                            className="flex-1 bg-white border border-emerald-400 px-3 py-1.5 rounded-lg font-mono text-xs text-slate-900 focus:outline-none"
+                          />
+                          <button
+                            type="button"
+                            onClick={handleInstantUpiUtrActivation}
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3.5 py-1.5 rounded-lg transition shadow-sm shrink-0"
+                          >
+                            ✅ Verify UTR &amp; Activate
+                          </button>
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap gap-2 pt-1">
+                        <a
+                          href={waUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition shadow-sm"
+                        >
+                          💬 Or Send Screenshot on WhatsApp
+                        </a>
+                        <a
+                          href={uri}
+                          className="inline-flex sm:hidden items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition"
+                        >
+                          ⚡ Open UPI App on Mobile
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Activation Section */}
               <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
@@ -364,31 +550,6 @@ export function Layout() {
                 >
                   🚀 Activate License Key
                 </button>
-              </div>
-
-              {/* Purchase Details */}
-              <div className="flex flex-wrap sm:flex-nowrap items-center gap-4 bg-amber-50/50 p-4 rounded-xl border border-amber-200/50">
-                <div className="w-24 h-24 shrink-0 bg-white border border-amber-200 rounded-lg p-1.5 flex items-center justify-center">
-                  <QrCode className="h-full w-full text-slate-800" />
-                </div>
-                <div className="flex-1">
-                  <h5 className="font-bold text-slate-800 text-xs sm:text-sm">
-                    How to Get a License Key?
-                  </h5>
-                  <p className="text-xs text-slate-500 mt-1">
-                    Scan above QR to pay securely via any UPI App (GPay, PhonePe, Paytm). Payment complete hone ke baad WhatsApp button par click karein aur apna payment screenshot share karke instantly license key activate karwayein!
-                  </p>
-                  <div className="flex gap-2 mt-3">
-                    <a
-                      href="https://wa.me/919999999999?text=Hi%20Suraj%20ji,%20I%20have%20paid%20for%20BillSaaS%20Premium.%20Please%20generate%20my%20Premium%20License%20Key."
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center gap-1 bg-green-600 hover:bg-green-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition"
-                    >
-                      💬 Chat on WhatsApp for Key
-                    </a>
-                  </div>
-                </div>
               </div>
 
             </div>
