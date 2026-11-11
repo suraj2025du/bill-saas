@@ -3,6 +3,8 @@
  * Validates keys of format XXXXX-XXXXX-XXXXX-XXXXX
  */
 
+import { getSaasConfig } from './saasConfig';
+
 export type PlanTier = 'TRIAL' | 'MONTHLY' | 'STARTER' | 'ENTERPRISE';
 
 export interface PlanQuota {
@@ -375,11 +377,12 @@ export function getSoftwareLockState(settings?: {
   const plan: PlanTier = settings.licenseType || 'TRIAL';
   if (isLicenseExpired(settings)) {
     if (plan === 'MONTHLY') {
+      const cfg = getSaasConfig();
       return {
         disabled: true,
         kind: 'MONTHLY_EXPIRED',
         title: '📅 Dukaan Monthly Plan Ended — Software Disabled',
-        message: `Your Dukaan Monthly Plan expired on ${settings.licenseExpiry}. Because monthly subscription must be renewed every 30 days, billing & accounting access is paused. Renew your Dukaan Monthly Plan (₹199/mo) or upgrade to Vyapaar Starter (₹799/yr) or Business Pro Annual (₹1,499/yr) to continue.`,
+        message: `Your Dukaan Monthly Plan expired on ${settings.licenseExpiry}. Because monthly subscription must be renewed every 30 days, billing & accounting access is paused. Renew your Dukaan Monthly Plan (₹${cfg.monthlyPrice}/mo) or upgrade to Vyapaar Starter (₹${cfg.starterPrice}/yr) or Business Pro Annual (₹${cfg.enterprisePrice}/yr) to continue.`,
       };
     }
     return {

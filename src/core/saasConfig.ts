@@ -46,9 +46,9 @@ export const DEFAULT_SAAS_CONFIG: SaasConfig = {
   adminPhone: '919999999999',
   adminUpiVpa: 'billsaas@upi',
   adminPayeeName: 'BillSaaS Pro Payments',
-  monthlyPrice: 199,
-  starterPrice: 799,
-  enterprisePrice: 1499,
+  monthlyPrice: 299,
+  starterPrice: 1199,
+  enterprisePrice: 2499,
   leadWebhookUrl: '',
 };
 

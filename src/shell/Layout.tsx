@@ -7,6 +7,8 @@ import { setUnlocked, useStore } from '../store/store';
 import { attempt, toast } from '../ui/feedback';
 import { getBillingDocsCount, getDaysRemaining, buildLicenseActivationPatch, verifyUpiUtrAndBuildActivation, isGreatPlanActive } from '../core/licensing';
 import { getSaasConfig } from '../core/saasConfig';
+import { getActiveLanguage, setActiveLanguage, LANGUAGE_OPTIONS, t } from '../core/i18n';
+import { registerReferralSale } from '../core/referrals';
 import { QrSvg, upiLink } from '../print/codes';
 import { Kbd, cx } from '../ui/kit';
 import { useIdleLock } from './appState';
@@ -94,7 +96,25 @@ export function Layout() {
   const [activationKey, setActivationKey] = useState('');
   const [activationOwner, setActivationOwner] = useState('');
   const [upiUtrNumber, setUpiUtrNumber] = useState('');
+  const [referralCode, setReferralCode] = useState('');
   const [selectedPlan, setSelectedPlan] = useState<'MONTHLY' | 'STARTER' | 'ENTERPRISE'>('STARTER');
+
+  const getTranslatedLabel = (label: string) => {
+    const map: Record<string, string> = {
+      'Dashboard': 'dashboard',
+      'Daily & Price Board': 'dailyBoard',
+      'Sales': 'sales',
+      'Invoices & documents': 'invoices',
+      'Payments': 'payments',
+      'Parties': 'parties',
+      'Products': 'products',
+      'Bulk edit': 'bulkEdit',
+      'Stock & valuation': 'stockValuation',
+      'Settings': 'settings'
+    };
+    const key = map[label];
+    return key ? t(key) : label;
+  };
 
   const invoices = useStore((s) => s.data.invoices);
   const billingDocsCount = getBillingDocsCount(invoices);
@@ -134,12 +154,40 @@ export function Layout() {
       toast.error(res.error || 'Invalid 12-digit UPI UTR Number.');
       return;
     }
+
+    // Register CA Referral if entered
+    if (referralCode.trim()) {
+      try {
+        const planPrice =
+          selectedPlan === 'MONTHLY'
+            ? saasConfig.monthlyPrice
+            : selectedPlan === 'STARTER'
+            ? saasConfig.starterPrice
+            : saasConfig.enterprisePrice;
+        
+        const refLead = registerReferralSale({
+          referralCode: referralCode.trim(),
+          shopName: biz.name,
+          ownerPhone: biz.phone || '',
+          planPurchased: selectedPlan,
+          amountPaid: planPrice,
+        });
+        
+        if (refLead) {
+          toast.success(`Referral Code ${referralCode.toUpperCase()} Applied! 20% partner commission credited.`);
+        }
+      } catch (err) {
+        console.error('Referral registration error:', err);
+      }
+    }
+
     void attempt(
       () => updateSettings(res.patch!),
       `Payment Verified (UTR: ${res.utrClean})! Aapka Plan (${res.patch.licenseExpiry} tak) activate ho gaya hai.`
     );
     setUpgradeOpen(false);
     setUpiUtrNumber('');
+    setReferralCode('');
   };
 
   useIdleLock(settings);
@@ -188,7 +236,7 @@ export function Layout() {
                   }
                 >
                   <item.icon className="h-4 w-4 shrink-0" aria-hidden />
-                  {item.label}
+                  {getTranslatedLabel(item.label)}
                 </NavLink>
               ))}
             </div>
@@ -215,6 +263,24 @@ export function Layout() {
             <Kbd>Ctrl K</Kbd>
           </button>
           <div className="ml-auto flex items-center gap-1">
+            {/* Language Switcher Dropdown */}
+            <div className="flex items-center gap-1.5 text-xs text-slate-600 bg-slate-100 hover:bg-slate-200 px-2.5 py-1.5 rounded-full mr-1 transition">
+              <span className="font-semibold text-slate-500">🌐 Lang:</span>
+              <select
+                value={getActiveLanguage()}
+                onChange={(e) => {
+                  setActiveLanguage(e.target.value as any);
+                  window.location.reload();
+                }}
+                className="bg-transparent font-bold text-slate-800 focus:outline-none cursor-pointer text-xs"
+              >
+                {LANGUAGE_OPTIONS.map((opt) => (
+                  <option key={opt.code} value={opt.code} className="bg-white text-slate-800 font-bold">
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
             {saving > 0 && (
               <span className="flex items-center gap-1 text-xs text-slate-500" role="status">
                 <Loader2 className="h-3.5 w-3.5 animate-spin" /> Saving
