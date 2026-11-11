@@ -548,6 +548,13 @@ export function Layout() {
                             placeholder="12-digit UPI UTR (e.g. 412345678901)"
                             className="flex-1 bg-white border border-emerald-400 px-3 py-1.5 rounded-lg font-mono text-xs text-slate-900 focus:outline-none"
                           />
+                          <input
+                            type="text"
+                            value={referralCode}
+                            onChange={(e) => setReferralCode(e.target.value)}
+                            placeholder="CA Code (Optional)"
+                            className="w-full sm:w-36 bg-white border border-emerald-300 px-2.5 py-1.5 rounded-lg font-mono text-xs text-slate-900 uppercase focus:outline-none"
+                          />
                           <button
                             type="button"
                             onClick={handleInstantUpiUtrActivation}
